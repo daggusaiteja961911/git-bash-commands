@@ -1,0 +1,21 @@
+1. $ git init
+2. $ ls -al
+3. $ git status
+4. $ git add finalreport.pdf
+5. $ git status
+6. $ git commit -m "first commit" finalreport.pdf
+7. Authority:
+           $ git config --global user.email "daggusaiteja123@gmail.com"
+           $ git config --global user.name "daggusaiteja961911"
+8. $ git commit -m "first commit" finalreport.pdf
+9. $ git status
+10.$ git remote add origin https://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@github.com/daggusaiteja961911/finalreport
+11.$ git push -u origin main
+...........................................
+echo "# finalreport" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/daggusaiteja961911/finalreport.git
+git push -u origin main
