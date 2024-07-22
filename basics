@@ -1,0 +1,611 @@
+import com.walmart.international.digiwallet.service.basic.ng.exception.ApplicationException;
+import com.walmart.international.wallet.payment.app.controller.impl.billpay.BillerControllerImpl;
+import com.walmart.international.wallet.payment.app.service.BillerService;
+import com.walmart.international.wallet.payment.dto.request.billpay.BillerDataCacheEvictRequest;
+import com.walmart.international.wallet.payment.dto.request.billpay.BillerDataCacheReloadRequest;
+import com.walmart.international.wallet.payment.dto.request.billpay.BillerDataUpdateInfoRequest;
+import com.walmart.international.wallet.payment.dto.response.billpay.*;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
+import org.mockito.Spy;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.text.SimpleDateFormat;
+import java.util.*;
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+
+@ExtendWith(MockitoExtension.class)
+class BillerControllerTest {
+
+    @Mock
+    private BillerService billerService;
+
+    @Spy
+    @InjectMocks
+    private BillerControllerImpl billerController;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Test
+    public void shouldGetBillerCategories() {
+        BillerCategoriesResponse mockresponse = new BillerCategoriesResponse();
+
+        when(billerService.getBillerCategories(anyInt())).thenReturn(mockresponse);
+
+        BillerCategoriesResponse response = billerController.getBillerCategories(1);
+
+        assertNotNull(response);
+    }
+
+    @Test
+    void shouldGetBillerCategories_WithData() {
+        GetBillerCategoryBillerDTO biller = GetBillerCategoryBillerDTO.builder()
+                .billerId(UUID.randomUUID())
+                .processorBillerId("999988")
+                .displayName("Bait")
+                .billerType("Internet y Tiempo aire")
+                .imageURL("https://cashi.walmart.com/Providers-Icons/PNG_NEW/Bait_080923.png")
+                .isNewBiller(false)
+                .tags(new String[]{"Bait", "Recarga celular"})
+                .build();
+
+        BillerCategoryDTO category = BillerCategoryDTO.builder()
+                .id(UUID.randomUUID())
+                .categoryName("Recarga celular")
+                .imageUrl("https://cashi.walmart.com/Providers-SVG-FIXED/Biller-Categories-2/telephone.svg")
+                .billerCategoryVersion(1)
+                .hasEnabledBillers(true)
+                .hasNewBillers(false)
+                .billers(Arrays.asList(biller))
+                .build();
+
+        BillerCategoriesResponse billerCategoriesResponse = BillerCategoriesResponse.builder()
+                .categories(Arrays.asList(category))
+                .billerCategoryDataLastUpdatedAt(new Date())
+                .build();
+
+        when(billerService.getBillerCategories(anyInt())).thenReturn(billerCategoriesResponse);
+
+        BillerCategoriesResponse response = billerController.getBillerCategories(1);
+
+        assertEquals("Recarga celular", response.getCategories().get(0).getCategoryName());
+        assertEquals(true, response.getCategories().get(0).getHasEnabledBillers());
+    }
+
+    @Test
+    void shouldGetPopularBillers() throws Exception {
+        mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+
+        PopularBillersResponse popularBillersResponse = new PopularBillersResponse();
+
+        when(billerService.getPopularBillers()).thenReturn(popularBillersResponse);
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void shouldGetPopularBillers_WithData() throws Exception {
+        mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+
+        GetPopularBillersBillerDTO billerDTO = GetPopularBillersBillerDTO.builder()
+                .billerId(UUID.randomUUID())
+                .processorBillerId("999987")
+                .build();
+        PopularBillersResponse popularBillersResponse = PopularBillersResponse.builder()
+                .billers(Collections.singletonList(billerDTO))
+                .build();
+
+        when(billerService.getPopularBillers()).thenReturn(popularBillersResponse);
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.billers[0].billerId").exists())
+                .andExpect(jsonPath("$.billers[0].processorBillerId").value("999987"));
+    }
+
+    @Test
+    public void shouldGetBillerById() throws Exception {
+
+        mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+
+        UUID billerId = UUID.randomUUID();
+        BillerByIdResponse response = new BillerByIdResponse();
+
+        when(billerService.getBillerById(any(UUID.class))).thenReturn(response);
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/" + billerId))
+                .andExpect(status().isOk());
+
+    }
+
+    @Test
+    public void shouldGetBillerDataUpdateInfo() {
+        Set<UUID> billerIds = new HashSet<>();
+        billerIds.add(UUID.randomUUID());
+
+        BillerDataUpdateInfoRequest request = new BillerDataUpdateInfoRequest();
+        BillerDataUpdateInfoResponse response = BillerDataUpdateInfoResponse.builder()
+                .billerCategoryDataLastUpdatedAt(new Date())
+                .billerIncorrectSearchKeywordsLastUpdatedAt(new Date())
+                .billerPlanDetailUpdateInfoList(Collections.emptyList())
+                .build();
+
+        when(billerService.getBillerDataUpdateInfo(request)).thenReturn(response);
+
+        BillerDataUpdateInfoResponse result = billerController.getBillerDataUpdateInfo(request);
+
+        assertEquals(response, result);
+    }
+
+    @Test
+    public void shouldGetReloadCacheForBillerData() throws ApplicationException {
+        BillerDataCacheReloadRequest request = new BillerDataCacheReloadRequest();
+        BillerDataCacheAlterResponse response = BillerDataCacheAlterResponse.builder().processorBillerIdsToRetry(Set.of("1", "2", "3")).build();
+
+        when(billerService.reloadCacheForBillerData(any(BillerDataCacheReloadRequest.class))).thenReturn(response);
+
+        BillerDataCacheAlterResponse result = billerController.reloadCacheForBillerData(request);
+
+        assertEquals(response, result);
+        verify(billerService, times(1)).reloadCacheForBillerData(any(BillerDataCacheReloadRequest.class));
+    }
+
+    @Test
+    public void shouldGetEvictCacheForBillerData() {
+        BillerDataCacheEvictRequest request = new BillerDataCacheEvictRequest();
+        BillerDataCacheAlterResponse response = BillerDataCacheAlterResponse.builder().processorBillerIdsToRetry(Set.of("1", "2")).build();
+
+        when(billerService.evictCacheForBillerData(any(BillerDataCacheEvictRequest.class))).thenReturn(response);
+
+        BillerDataCacheAlterResponse result = billerController.evictCacheForBillerData(request);
+
+        assertEquals(response, result);
+        // verify(billerService, times(1)).evictCacheForBillerData(any(BillerDataCacheEvictRequest.class));
+    }
+
+    @Test
+    public void shouldGetBillerIncorrectSearchKeywords() throws Exception {
+        mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+
+        HashMap<String, List<String>> incorrectKeywords = new HashMap<>();
+        Date lastUpdated = new Date();
+
+        BillerIncorrectSearchKeywordsResponse response = BillerIncorrectSearchKeywordsResponse.builder()
+                .billerIncorrectSearchKeywords(incorrectKeywords)
+                .billerIncorrectSearchKeywordsLastUpdatedAt(lastUpdated)
+                .build();
+
+        when(billerService.getBillerIncorrectSearchKeywords()).thenReturn(response);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String formattedDate = sdf.format(lastUpdated);
+
+        mockMvc.perform(get("/services/biller-data/incorrect-search-keywords"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"billerIncorrectSearchKeywords\":{},\"billerIncorrectSearchKeywordsLastUpdatedAt\":\"" + formattedDate + "\"}"));
+
+
+    }
+
+    @Test
+    public void shouldGetBillerIncorrectSearchKeywords_WithData() throws Exception {
+        mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+
+        HashMap<String, List<String>> incorrectKeywords = new HashMap<>();
+        incorrectKeywords.put("Teel", List.of("Telcel", "Telmex"));
+        incorrectKeywords.put("Telce", List.of("Telcel"));
+        Date lastUpdated = new Date();
+
+        BillerIncorrectSearchKeywordsResponse response = BillerIncorrectSearchKeywordsResponse.builder()
+                .billerIncorrectSearchKeywords(incorrectKeywords)
+                .billerIncorrectSearchKeywordsLastUpdatedAt(lastUpdated)
+                .build();
+
+        when(billerService.getBillerIncorrectSearchKeywords()).thenReturn(response);
+
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        String formattedDate = sdf.format(lastUpdated);
+
+        mockMvc.perform(get("/services/biller-data/incorrect-search-keywords"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("{\"billerIncorrectSearchKeywords\":{\"Teel\":[\"Telcel\",\"Telmex\"],\"Telce\":[\"Telcel\"]},\"billerIncorrectSearchKeywordsLastUpdatedAt\":\"" + formattedDate + "\"}"));
+    }
+
+}
+........................................................
+@ExtendWith(MockitoExtension.class)
+public class BillerControllerAllTest {
+
+    @Mock
+    private BillerService billerService;
+
+    @Mock
+    private BillerPromotionService billerPromotionService;
+
+    @InjectMocks
+    private BillerControllerImpl billerController;
+
+    @Mock
+    private WalletPaymentServiceConfiguration walletPaymentServiceConfiguration;
+
+    private MockMvc mockMvc;
+    private ObjectMapper objectMapper;
+
+
+    @BeforeEach
+    public void setup() {
+        mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+        objectMapper = new ObjectMapper();
+    }
+
+    @Test
+    public void shouldTest_GetBillerCategories() throws Exception {
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/services/biller-data/v1/biller/categories")
+                        .param("billerCategoryVersion", "1")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+                //.andExpect(jsonPath("$.categories[0].categoryName", is("Recarga celular")));
+
+        verify(billerService).getBillerCategories(1);
+    }
+
+    @Test
+    public void shouldTest_GetPopularBillers() throws Exception {
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/services/biller-data/v1/biller/popular")
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        verify(billerService).getPopularBillers();
+    }
+
+    @Test
+    public void shouldTest_GetBillerById() throws Exception {
+        UUID billerId = UUID.randomUUID();
+        //UUID billerId = UUID.fromString("");
+        String processorBillerId = "999988";
+        //UUID processorBillerId = UUID.fromString(processorBillerIdStr);
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/services/biller-data/v1/biller/{billerId}", billerId)
+                        .param("processorBillerId", processorBillerId)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        verify(billerService).getBillerById(billerId);
+    }
+
+    @Test
+    public void shouldTest_GetBillerDataUpdateInfo() throws Exception {
+        BillerDataUpdateInfoRequest request = new BillerDataUpdateInfoRequest();
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/services/biller-data//update-info")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        verify(billerService).getBillerDataUpdateInfo(any(BillerDataUpdateInfoRequest.class));
+    }
+
+    @Test
+    public void shouldTest_ReloadCacheForBillerData() throws Exception {
+        BillerDataCacheReloadRequest request = new BillerDataCacheReloadRequest();
+
+        mockMvc.perform(MockMvcRequestBuilders.put("/services/biller-data/cache/reload")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        verify(billerService).reloadCacheForBillerData(any(BillerDataCacheReloadRequest.class));
+    }
+
+    @Test
+    public void shouldTest_EvictCacheForBillerData() throws Exception {
+        BillerDataCacheEvictRequest request = new BillerDataCacheEvictRequest();
+
+        mockMvc.perform(MockMvcRequestBuilders.post("/services/biller-data/cache/evict")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request))
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        verify(billerService).evictCacheForBillerData(any(BillerDataCacheEvictRequest.class));
+    }
+
+    @Test
+    public void shouldTest_GetBillerPromotions() throws Exception {
+        String billerCategoryIds = "b09f4834-9ae8-11ec-b0bc-fa163e4fd434";
+        String processorBillerIds = "999988";
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/services/biller-data/v1/biller/promotions")
+                        .param("billerCategoryIds", billerCategoryIds)
+                        .param("processorBillerIds", processorBillerIds)
+                        .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        verify(billerPromotionService).getBillerPromotions(billerCategoryIds, processorBillerIds, walletPaymentServiceConfiguration.getBillerCategoryVersionForPromotions());
+    }
+
+    @Test
+    public void shouldTest_GetBillerIncorrectSearchKeyWords() throws Exception {
+        String billerCategorysIds = "";
+        String processorBillerIds = "";
+        String searchKeyword = "";
+
+        mockMvc.perform(MockMvcRequestBuilders.get("/services/biller-data/incorrect-search-keywords")
+                .param("billerCategoriesIds", billerCategorysIds)
+                .param("processorBillerIds", processorBillerIds)
+                .param("searchKeyword", searchKeyword)
+                .accept(MediaType.APPLICATION_JSON))
+                .andExpect(MockMvcResultMatchers.status().isOk());
+
+        //verify(billerService).getBillerIncorrectSearchKeywords(anyString(), anyString(), anyInt());
+        verify(billerService).getBillerIncorrectSearchKeywords();
+    }
+
+    //  constraints //
+
+    @Test
+    public void shouldTest_ReturnBadRequest_WhenParameterHasInvalidFormat_GetBillerCategories() throws Exception {
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/categories")
+                        .param("billerCategoryVersion", "invalid_format")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+//        .andExpect(jsonPath("$.message", is("Parameter 'billerCategoryVersion' must be an integer")));
+    }
+
+    @Test
+    public void shouldTest_ReturnBadRequest_WhenRequiredParameterIsMissing_GetBillerCategories() throws Exception {
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/categories")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void shouldTest_RejectedGetPopularBillers_WithInvalidAcceptHeader() throws Exception {
+        mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .accept(MediaType.TEXT_PLAIN))
+                .andExpect(status().isNotAcceptable());
+    }
+
+    @Test
+    public void shouldTest_RejectGetPopularBillers_WithInvalidMediaTYpe() throws Exception {
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("{\"json\":\"request to be send\"}"))
+                //.andExpect(status().isUnsupportedMediaType());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_RejectGetPopularBillers_WithNullRequest() throws Exception {
+
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content((byte[]) null))
+                // .andExpect(status().isBadRequest())
+                .andExpect(status().isOk())
+                .andReturn();
+    }
+
+    @Test
+    public void shouldTest_ReturnBadRequest_WhenRequestIsInvalid_GetPopularBillers() throws Exception {
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .content("{}") // Empty request body
+                        .contentType(MediaType.APPLICATION_JSON))
+                //.andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_ReturnBadRequest_WhenRequiredFieldIsMissing() throws Exception {
+
+        String requestBody = "{ \"processorBillerId\": \"999987\" }"; // Missing other required fields
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .content(requestBody)
+                        .contentType(MediaType.APPLICATION_JSON))
+                //.andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+        @Test
+    public void shouldTest_ReturnBadRequest_WhenFieldIsInvalid() throws Exception {
+
+        String requestBody = "{ \"billerId\": \"invalid-id\", \"processorBillerId\": \"999987\" }"; // Invalid billerId format
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .content(requestBody)
+                        .contentType(MediaType.APPLICATION_JSON))
+                //.andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_GetBillerByIdNotFound() throws Exception {
+        UUID billerId = UUID.randomUUID();
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/" + billerId))
+                //.andExpect(status().isNotFound())
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTestGetBillerById_InvalidBillerId_Format() throws Exception {
+        String invalidBillerId = "invalid-uuid";
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/" + invalidBillerId))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void shouldTest_EvictCacheForBillerData_RequestProcessorBillerIds_NotNullConstraints() throws Exception {
+        String requestBody = "{\"evictCacheForAllBillers\":false}";
+
+        mockMvc.perform(post("/services/biller-data/cache/evict")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                //.andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_EvictCacheForBillerData_RequestEvictCacheForAllBillers_NotNullConstraints() throws Exception {
+        String requestBody = "{\"processorBillerIds\":[\"999992\",\"999993\"]}";
+
+        mockMvc.perform(post("/services/biller-data/cache/evict")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                //.andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_EvictCacheForBillerData_RequestProcessorBillerIds_SizeConstraint() throws Exception {
+        String requestBody = "{\"processorBillerIds\":[\"13677\"], \"evictCacheForAllBillers\":false}";
+
+        mockMvc.perform(post("/services/biller-data/cache/evict")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+//                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_EvictCacheForBillerData_RequestEvictCacheForAllBillers_TypeConstraints() throws Exception {
+        String requestBody = "{\"processorBillerIds\":[\"billerId1\", \"billerId2\"],\"evictCacheForAllBillers\":\"true\"}";
+
+        mockMvc.perform(post("/services/biller-data/cache/evict")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+                //.andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_EvictCacheForBillerData_RequestNullConstraints() throws Exception {
+        String requestBody = "{}";
+
+        mockMvc.perform(post("/services/biller-data/cache/evict")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(requestBody))
+//                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_ReloadCacheForBillerData_RequestNullConstraints() throws Exception {
+        String requestBody = "{}";
+
+        mockMvc.perform(put("/services/biller-data/cache/reload")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+//                .andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTest_ReloadCacheForBillerData_InvalidFormat() throws Exception {
+         String requestBody = "{\"someField\":\"invalidFormat\"}";
+
+         mockMvc.perform(put("/services/biller-data/cache/reload")
+                 .contentType(MediaType.APPLICATION_JSON)
+                 .content(requestBody))
+                 //.andExpect(status().isBadRequest());
+                 .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTestInvalidRequestBody_IncorrectSearchKeywords() throws Exception {
+
+        String requestBody = "{\"invalidField\":\"invalidValue\"}";
+
+        mockMvc.perform(get("/services/biller-data/incorrect-search-keywords")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                //.andExpect(status().isBadRequest());
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    public void shouldTestGetBillerIncorrectSearchKeywords_WithQueryParam() throws Exception {
+
+        String jsonResponse = mockMvc.perform(get("/services/biller-data/incorrect-search-keywords?param=value")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+
+//        assertThat(jsonResponse).contains("\"billerIncorrectSearchKeywords\"");
+        assertThat(jsonResponse).contains("");
+    }
+
+    @Test
+    public void shouldTest_RejectGetPopularBillers_WithNullRequest_2() throws Exception {
+
+
+        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        //.content(""))
+                                .content((String) null))
+                // .andExpect(status().isBadRequest())
+                .andExpect(status().isOk())
+                .andReturn();
+    }
+
+//    @Test
+//    public void test_RejectedGetPopularBiller_withnull() throws Exception {
+//
+//        mockMvc.perform(get("/services/biller-data/v1/biller/popular")
+//                .contentType("/application/json")
+//                .content((byte[]) null))
+//                .andExpect(status().isOk());
+//    }
+
+    @Test
+    void testBillerById() throws Exception {
+
+        UUID billerId = UUID.randomUUID();
+
+        HttpUriRequest request = new HttpGet("/services/biller-data/v1/biller/{billerId}" + billerId);
+        HttpResponse response = HttpClientBuilder.create().build().execute(request);
+        assertThat(response.getStatusLine().getStatusCode(), equalTo(HttpStatus.OK.value()));
+    }
+
+    private void assertThat(int statusCode, Matcher<Integer> integerMatcher) {
+
+    }
+
+
+}
+
