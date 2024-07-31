@@ -1,0 +1,162 @@
+    @Test
+    public void test_valid_biller_category_and_processor_ids_return_correct_promotions_map() {
+        // Arrange
+        BillerPromotionCoreService service = new BillerPromotionCoreService();
+        CampaignServiceClient campaignServiceClient = mock(CampaignServiceClient.class);
+        BillerCoreService billerCoreService = mock(BillerCoreService.class);
+        ReflectionTestUtils.setField(service, "campaignServiceClient", campaignServiceClient);
+        ReflectionTestUtils.setField(service, "billerCoreService", billerCoreService);
+
+        String billerCategoryIds = "123e4567-e89b-12d3-a456-426614174000";
+        String processorBillerIds = "35";
+        int billerCategoryVersion = 1;
+
+        List<BillerCategory> billerCategoriesList = new ArrayList<>();
+        BillerCategory billerCategory = new BillerCategory();
+        billerCategory.setId(UUID.fromString(billerCategoryIds));
+        billerCategoriesList.add(billerCategory);
+
+        Map<String, List<PromotionsMappingResponse>> promotionsMapFromCaas = new HashMap<>();
+        promotionsMapFromCaas.put("35", new ArrayList<>());
+
+        when(billerCoreService.getBillerCategoriesList(billerCategoryVersion)).thenReturn(billerCategoriesList);
+        when(campaignServiceClient.getAllPromotions(false)).thenReturn(promotionsMapFromCaas);
+
+        // Act
+        Map<String, List<BillerPromotion>> result = service.getAllPromotionsForPromotionCategory(billerCategoryIds, processorBillerIds, billerCategoryVersion);
+
+        // Assert
+        assertNotNull(result);
+    }
+.......................................................................
+    @Test
+    public void test_valid_processor_biller_ids_return_correct_promotions_map() {
+        // Prepare
+        BillerPromotionCoreService billerPromotionCoreService = new BillerPromotionCoreService();
+        CampaignServiceClient campaignServiceClient = mock(CampaignServiceClient.class);
+        BillerCoreService billerCoreService = mock(BillerCoreService.class);
+        BillerPromotionMapper billerPromotionMapper = BillerPromotionMapper.INSTANCE;
+
+        Map<String, List<PromotionsMappingResponse>> promotionsMapFromCaas = new HashMap<>();
+        List<PromotionsMappingResponse> promotionsList = new ArrayList<>();
+        PromotionsMappingResponse promotionResponse = new PromotionsMappingResponse();
+        promotionResponse.setCampaignId(UUID.randomUUID());
+        promotionResponse.setDescription("Test Promotion");
+        promotionResponse.setPromotionText("50% off");
+        promotionResponse.setStartDate("2023-01-01T00:00:00");
+        promotionResponse.setEndDate("2023-01-31T23:59:59");
+        promotionsList.add(promotionResponse);
+        promotionsMapFromCaas.put("12345", promotionsList);
+
+        BillerCategory billerCategory = new BillerCategory();
+        billerCategory.setId(UUID.randomUUID());
+        billerCategory.setCategoryName("Test Category");
+        Biller biller = new Biller();
+        biller.setProcessorBillerId("12345");
+        billerCategory.setBillers(Collections.singletonList(biller));
+
+        List<BillerCategory> billerCategoriesList = Collections.singletonList(billerCategory);
+
+        when(billerCoreService.getBillerCategoriesList(anyInt())).thenReturn(billerCategoriesList);
+        when(campaignServiceClient.getAllPromotions(anyBoolean())).thenReturn(promotionsMapFromCaas);
+
+        // Execute
+        Map<String, List<BillerPromotion>> result = billerPromotionCoreService.getAllPromotionsForPromotionCategory("123", "12345", 1);
+
+        // Verify
+        assertNotNull(result);
+        assertTrue(result.containsKey("12345"));
+        assertEquals(1, result.get("12345").size());
+        assertEquals(promotionResponse.getCampaignId(), result.get("12345").get(0).getCampaignId());
+        assertEquals(promotionResponse.getDescription(), result.get("12345").get(0).getDescription());
+        assertEquals(promotionResponse.getPromotionText(), result.get("12345").get(0).getPromotionText());
+        assertEquals(promotionResponse.getStartDate(), result.get("12345").get(0).getStartDate());
+        assertEquals(promotionResponse.getEndDate(), result.get("12345").get(0).getEndDate());
+    }
+..................................................................
+    @Test
+    public void test_null_biller_category_and_processor_ids_throw_exception() {
+        // Arrange
+        BillerPromotionCoreService billerPromotionCoreService = new BillerPromotionCoreService();
+
+        // Act & Assert
+        assertThrows(DataValidationException.class, () -> {
+            billerPromotionCoreService.getAllPromotionsForPromotionCategory(null, null, 1);
+        });
+    }
+.......................................................................
+    @Test
+    public void test_promotions_sorted_and_limited_to_one_per_biller() {
+        // Prepare
+        BillerPromotionCoreService billerPromotionCoreService = new BillerPromotionCoreService();
+        Map<String, List<PromotionsMappingResponse>> promotionMapFromCaas = new HashMap<>();
+        List<PromotionsMappingResponse> promotionsList = new ArrayList<>();
+        PromotionsMappingResponse promotion1 = new PromotionsMappingResponse();
+        promotion1.setBillerId("1");
+        promotion1.setCampaignId("101");
+        promotion1.setStartDate("2022-12-01T08:00:00");
+        promotion1.setEndDate("2022-12-31T23:59:59");
+        promotionsList.add(promotion1);
+        promotionMapFromCaas.put("1", promotionsList);
+
+        // Act
+        Map<String, List<BillerPromotion>> result = billerPromotionCoreService.getAllPromotionsForPromotionCategory("1", null, 1);
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.containsKey("1"));
+        List<BillerPromotion> billerPromotions = result.get("1");
+        assertEquals(1, billerPromotions.size());
+        assertEquals("101", billerPromotions.get(0).getCampaignId());
+    }
+.......................................................................
+    @Test
+    public void test_invalid_uuid_format_in_biller_category_ids_throws_processing_exception() {
+        // Arrange
+        BillerPromotionCoreService billerPromotionCoreService = new BillerPromotionCoreService();
+        String invalidBillerCategoryIds = "invalid_uuid_1,invalid_uuid_2";
+
+        // Act & Assert
+        assertThrows(ProcessingException.class, () -> {
+            billerPromotionCoreService.getAllPromotionsForPromotionCategory(invalidBillerCategoryIds, null, 1);
+        });
+    }
+.......................................................................
+    @Test
+    public void test_empty_promotions_map_from_caas_results_in_empty_promotions_map() {
+        // Prepare
+        BillerPromotionCoreService billerPromotionCoreService = new BillerPromotionCoreService();
+        CampaignServiceClient campaignServiceClient = mock(CampaignServiceClient.class);
+        BillerCoreService billerCoreService = mock(BillerCoreService.class);
+        BillerPromotionMapper billerPromotionMapper = BillerPromotionMapper.INSTANCE;
+
+        Map<String, List<PromotionsMappingResponse>> caasPromotionsMap = new HashMap<>();
+        when(campaignServiceClient.getAllPromotions(anyBoolean())).thenReturn(caasPromotionsMap);
+
+        Map<String, List<BillerPromotion>> expectedPromotionsMap = new HashMap<>();
+
+        // Act
+        Map<String, List<BillerPromotion>> actualPromotionsMap = billerPromotionCoreService.getAllPromotionsForPromotionCategory(null, null, 1);
+
+        // Assert
+        assertEquals(expectedPromotionsMap, actualPromotionsMap);
+    }
+.......................................................................
+    @Test
+    public void test_null_billers_list_handling() {
+        // Prepare
+        BillerPromotionCoreService billerPromotionCoreService = new BillerPromotionCoreService();
+        String billerCategoryIds = "123e4567-e89b-12d3-a456-426614174000";
+        String processorBillerIds = "1,2,3";
+    
+        // Act
+        Map<String, List<BillerPromotion>> promotionsMap = billerPromotionCoreService.getAllPromotionsForPromotionCategory(billerCategoryIds, processorBillerIds, 1);
+    
+        // Assert
+        assertNotNull(promotionsMap);
+        assertTrue(promotionsMap.isEmpty());
+    } 
+.......................................................................
+.......................................................................
+.......................................................................
+.......................................................................

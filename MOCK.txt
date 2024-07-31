@@ -1,0 +1,82 @@
+MOCK:
+-> @Mock creates a mock.
+-> @Mock annotation mocks the concerned object.
+-> Purpose: Creates a mock instance of a class or interface.
+-> Usage: When you want to simulate behaviour of dependencies without executing their actual logic.
+-> Why: Useful for isolating the class under test by mocking its dependencies.
+
+INJECTMOCK:
+->  @InjectMock creates an instance of the class and injects the mocks that are marked with the annotations @Mock into it.
+-> Purpose: Automatically injects mock objects into the class under test.
+-> Usage: when you want the class under test to use mocked dependencies automatically.
+-> Why: Helps in testing the class in isolation with its dependencies mocked.
+
+Interface: An interface in the Java programming language is an abstract type that is used to declare a behavior that classes must implement. They are similar to protocols. Interfaces are declared using the interface keyword, and may only contain method signature and constant declarations.
+
+@InjectMocks : annotation tells to Mockito to inject all mocks (objects annotated by @Mock annotation) into fields of testing object. Mockito uses Reflection for this.
+
+@Autowired : annotation tells to Spring framework to inject bean from its IoC container. Spring also uses reflection for this when it is private field injection. You can even use even use @Inject annotation (part of Java EE specification) with the same effect.
+
+
+ObjectMapper provides functionality for reading and writing JSON, either to and from basic POJOs (Plain Old Java Objects), or to and from a general-purpose JSON Tree Model ( JsonNode ), as well as related functionality for performing conversions.
+
+…………………………………………………………………………………………..
+mockMvc = MockMvcBuilders.standaloneSetup(billerController).build();
+mockMvc : An instance of MockMvc used for testing Spring Mvc Controllers.
+MockMvcBuilders.standaloneSetup(billerController): Configures MockMvc with a specific controller, for testing without needing the full application context.
+build(): Finalises the setup and creates the MockMvc instance.
+why: Allows testing of the controller in isolation, ensuring that it behaves correctly without needing the entire application to run.
+
+
+objectMapper = new ObjectMapper();
+objectMapper: An instance of ObjectMapper from the Jackson library 
+new ObjectMapper(): Initialises the ObjectMapper , which is used for converting Java Object to JSON and vice versa.
+Why: Facilitates JSON Serialization and deserialisation in tests, allowing you to prepare and interpret JSON data easily.
+Overall: These lines set up the necessary tools for testing a spring MVC controller , enabling you to simulate web requests and handle JSON data within your tests.
+
+
+
+
+String requestBody = "{\"\":\"\"}";
+Purpose: Initializes a String variable named requestBody with an empty JSON object.
+why: This is typically used as a placeholder for JSON content in a test case.
+
+mockMvc.perform(get("/services/biller-data/incorrect-search-keywords")
+mockMvc: An object provide by Spring to simulate HTTP requests in tests.
+Perform: Execute the request.
+get: Specifies an HTTP GET request to the endpoint url
+why: Begins setting up the mock request to test the controller’s response.
+
+                .contentType(MediaType.APPLICATION_JSON)
+contentType: Sets the content-Type header of the request.
+MediType.Application_Json: Indicates that the request body is in JSON format.
+Why: Specifies that the request body should be interpreted as JSON data.
+
+                .content(requestBody))
+content(body): Attaches the body string to the body of the request.
+Why: Provides the necessary data payload for the request simulating input to the endpoint.
+
+        //.andExpect(status().isBadRequest());
+        .andExpect(status().isOk());
+andExpect: Sets the expectations for the result of the request.
+status().isOk():
+why: verifies that the controller handles the request successfully and returns the expected status code.
+
+
+…………………………………………………………………………………………..
+
+Controller: 
+purpose:Handles HTTP requests, processes user input, and interacts with the service layer to execute business logic.
+Role: Acts as an intermediary between the view and the service layer, coordinating the flow of data.
+
+controllerImpl:
+Purpose: A specific implementation of a controller interface. The naming convention often implies adherence to an interface-driven design
+Role: Contains the actual code for handling specific endpoints and delegating tasks to the service layer.
+
+Service:
+Purpose: Contains business logic and rules. It’s responsible for processing data received from the controller before passing it to the data access layer.
+Role: Provides an abstraction for business operations and transactions, maintaining separation between the business logic and the user interface.
+
+ServiceImpl:
+Purpose: A specific implementation of a service interface.
+Role: Implementing the business methods defined in the service interface , often interacting with repositories or DAO’s to perform operations on data.

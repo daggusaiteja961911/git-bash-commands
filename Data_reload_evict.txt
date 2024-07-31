@@ -1,0 +1,69 @@
+Test Case 1: shouldGetBillerDataUpdateInfo
+Purpose:
+Ensures that the getBillerDataUpdateInfo method returns the expected response with update information.
+
+Logic:
+
+Data Setup:
+
+Creates a BillerDataUpdateInfoRequest.
+Constructs a BillerDataUpdateInfoResponse with update timestamps and an empty list for plan details.
+Mock Setup:
+
+when(billerService.getBillerDataUpdateInfo(request)).thenReturn(response);
+Configures the mock service to return the prepared response when the method is called.
+Controller Call:
+
+Calls the getBillerDataUpdateInfo method on billerController with the request.
+Assertion:
+
+assertEquals(response, result);
+Verifies that the response matches the expected output.
+Test Case 2: shouldGetReloadCacheForBillerData
+Purpose:
+Tests that the reloadCacheForBillerData method reloads the cache and returns the expected result.
+
+Logic:
+
+Data Setup:
+
+Creates a BillerDataCacheReloadRequest.
+Builds a BillerDataCacheAlterResponse with IDs to retry.
+Mock Setup:
+
+when(billerService.reloadCacheForBillerData(any(BillerDataCacheReloadRequest.class))).thenReturn(response);
+Sets the mock service to return the response for any cache reload request.
+Controller Call:
+
+Calls reloadCacheForBillerData on the controller with the request.
+Assertions:
+
+assertEquals(response, result);
+Confirms that the response is as expected.
+verify(billerService, times(1)).reloadCacheForBillerData(any(BillerDataCacheReloadRequest.class));
+Checks that the service method was called exactly once.
+Test Case 3: shouldGetEvictCacheForBillerData
+Purpose:
+Validates that the evictCacheForBillerData method correctly evicts cache and provides the expected response.
+
+Logic:
+
+Data Setup:
+
+Creates a BillerDataCacheEvictRequest.
+Constructs a BillerDataCacheAlterResponse with IDs to retry.
+Mock Setup:
+
+when(billerService.evictCacheForBillerData(any(BillerDataCacheEvictRequest.class))).thenReturn(response);
+Mocks the service to return the response for any cache eviction request.
+Controller Call:
+
+Calls evictCacheForBillerData on the controller with the request.
+Assertion:
+
+assertEquals(response, result);
+Ensures the response matches the expected result.
+(The verify line is commented out, which means it’s not currently checking the number of invocations.)
+Why Use when(...).thenReturn(...):
+
+Simulates the service layer behavior, allowing the controller logic to be tested independently without actual service calls.
