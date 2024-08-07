@@ -1,0 +1,308 @@
+Fetch biller data from cache using processorBillerId:
+    @Test
+    public void test_fetch_biller_data_from_cache() throws ApplicationException {
+        String processorBillerId = "12345";
+        String cacheKey = processorBillerId + WPSConstants.Biller.SUFFIX_BILLER_DATA;
+        Biller expectedBiller = new Biller();
+        when(wmClient.get(cacheKey)).thenReturn(expectedBiller);
+
+        Biller result = billerCoreService.fetchAndCacheBillerData(processorBillerId);
+
+        assertEquals(expectedBiller, result);
+        verify(wmClient, times(1)).get(cacheKey);
+    }
+.......................................................................................................
+Fetch biller data from database when cache miss occurs:
+    @Test
+    public void test_fetch_biller_data_from_db_on_cache_miss() throws ApplicationException {
+        String processorBillerId = "12345";
+        String cacheKey = processorBillerId + WPSConstants.Biller.SUFFIX_BILLER_DATA;
+        BillerDO billerDO = new BillerDO();
+        Biller expectedBiller = new Biller();
+        when(wmClient.get(cacheKey)).thenReturn(null);
+        when(billerRepository.getByProcessorBillerIdAndEnabled(processorBillerId, Boolean.TRUE)).thenReturn(Optional.of(billerDO));
+        when(billerMapper.mapBillerDOToBillerWithoutSubBillersAndBillPlans(billerDO)).thenReturn(expectedBiller);
+
+        Biller result = billerCoreService.fetchAndCacheBillerData(processorBillerId);
+
+        assertEquals(expectedBiller, result);
+        verify(billerRepository, times(1)).getByProcessorBillerIdAndEnabled(processorBillerId, Boolean.TRUE);
+    }
+...........................................................................................................
+Handle null processorBillerId input:
+    @Test
+    public void test_handle_null_processor_biller_id() {
+        assertThrows(ApplicationException.class, () -> {
+            billerCoreService.fetchAndCacheBillerData((String) null);
+        });
+    }
+...........................................................................................................
+Handle null billerId input:
+    @Test
+    public void test_handle_null_biller_id() throws ApplicationException {
+        String processorBillerId = "12345";
+        String cacheKey = processorBillerId + WPSConstants.Biller.SUFFIX_BILLER_DATA;
+        Biller expectedBiller = new Biller();
+        when(wmClient.get(cacheKey)).thenReturn(expectedBiller);
+
+        Biller result = billerCoreService.fetchAndCacheBillerData(null, processorBillerId);
+
+        assertEquals(expectedBiller, result);
+        verify(wmClient, times(1)).get(cacheKey);
+    }
+...........................................................................................................
+Handle exceptions during cache fetch operations:
+    @Test
+    public void test_handle_exceptions_during_cache_fetch() throws ApplicationException {
+        String processorBillerId = "12345";
+        String cacheKey = processorBillerId + WPSConstants.Biller.SUFFIX_BILLER_DATA;
+        when(wmClient.get(cacheKey)).thenThrow(new RuntimeException("Cache fetch error"));
+
+        assertThrows(ApplicationException.class, () -> {
+            billerCoreService.fetchAndCacheBillerData(processorBillerId);
+        });
+        verify(wmClient, times(1)).get(cacheKey);
+    }
+...........................................................................................................
+Cache fetched biller data and update timestamp:
+    @Test
+    public void test_cache_fetched_biller_data_and_update_timestamp() {
+        // Prepare
+        BillerCoreService billerCoreService = new BillerCoreService();
+        String processorBillerId = "12345";
+
+        // Act
+        try {
+            Biller biller = billerCoreService.fetchAndCacheBillerData(processorBillerId);
+
+            // Assert
+            assertNotNull(biller);
+            // Add more assertions as needed
+        } catch (ApplicationException e) {
+            fail("Exception thrown while caching biller data: " + e.getMessage());
+        }
+    }
+...........................................................................................................
+Fetch biller categories list from cache using version:
+    @Test
+    public void test_fetch_biller_categories_list_from_cache_using_version() {
+        // Prepare
+        int billerCategoryVersion = 1;
+    
+        // Mocking behavior
+        List<BillerCategory> expectedBillerCategories = new ArrayList<>();
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORIES_MAP_CACHE_KEY + billerCategoryVersion)).thenReturn(expectedBillerCategories);
+    
+        // Execute
+        List<BillerCategory> actualBillerCategories = billerCoreService.getBillerCategoriesList(billerCategoryVersion);
+    
+        // Verify
+        assertEquals(expectedBillerCategories, actualBillerCategories);
+    }
+...........................................................................................................
+Cache fetched biller incorrect search keywords and update timestamp:
+    @Test
+    public void test_cache_fetched_biller_incorrect_search_keywords_and_update_timestamp() {
+        // Prepare
+        BillerCoreService billerCoreService = new BillerCoreService();
+    
+        // Act
+        HashMap<String, List<String>> result = billerCoreService.fetchAndCacheBillerIncorrectSearchKeywordMap();
+        Date timestamp = billerCoreService.fetchBillerIncorrectSearchDataUpdateTimestamp();
+    
+        // Assert
+        assertNotNull(result);
+        assertNotNull(timestamp);
+    }
+...........................................................................................................
+Fetch biller incorrect search keywords from database when cache miss occurs:
+    @Test
+    public void test_fetch_biller_incorrect_search_keywords_from_database_when_cache_miss_occurs() {
+        // Prepare
+        BillerCoreService billerCoreService = new BillerCoreService();
+        BillerSearchRepository billerSearchRepository = mock(BillerSearchRepository.class);
+        WmClient wmClient = mock(WmClient.class);
+        billerCoreService.setBillerSearchRepository(billerSearchRepository);
+        billerCoreService.setWmClient(wmClient);
+
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put("keyword1", Arrays.asList("biller1", "biller2"));
+        expectedMap.put("keyword2", Arrays.asList("biller3"));
+
+        when(wmClient.get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY)).thenReturn(null);
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(Arrays.asList(
+            new BillerSearchDO("keyword1", true, Arrays.asList(new BillerDO("biller1"), new BillerDO("biller2"))),
+            new BillerSearchDO("keyword2", true, Arrays.asList(new BillerDO("biller3")))
+        ));
+
+        // Execute
+        HashMap<String, List<String>> result = billerCoreService.fetchBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertEquals(expectedMap, result);
+    }
+...........................................................................................................
+Fetch biller categories list from database when cache miss occurs:
+    @Test
+    public void test_fetch_biller_categories_list_from_database_when_cache_miss_occurs() {
+        // Prepare
+        BillerCoreService billerCoreService = new BillerCoreService();
+        BillerCategoryVersionMappingRepository billerCategoryVersionMappingRepository = mock(BillerCategoryVersionMappingRepository.class);
+        billerCoreService.setBillerCategoryVersionMappingRepository(billerCategoryVersionMappingRepository);
+        WmClient wmClient = mock(WmClient.class);
+        billerCoreService.setWmClient(wmClient);
+
+        List<Integer> billerCategoryVersions = Collections.singletonList(1);
+        List<BillerCategory> expectedBillerCategories = new ArrayList<>();
+        when(wmClient.get(anyString())).thenReturn(null);
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(expectedBillerCategories);
+
+        // Execute
+        List<BillerCategory> actualBillerCategories = billerCoreService.getBillerCategoriesList(1);
+
+        // Verify
+        assertEquals(expectedBillerCategories, actualBillerCategories);
+        verify(wmClient, times(1)).get(anyString());
+        verify(billerCategoryVersionMappingRepository, times(1)).getBillerCategoriesWithBillers(billerCategoryVersions);
+    }
+    @Test
+    public void test_fetch_biller_categories_list_from_database_when_cache_miss_occurs_cache_hit() {
+        // Prepare
+        BillerCoreService billerCoreService = new BillerCoreService();
+        BillerCategoryVersionMappingRepository billerCategoryVersionMappingRepository = mock(BillerCategoryVersionMappingRepository.class);
+        billerCoreService.setBillerCategoryVersionMappingRepository(billerCategoryVersionMappingRepository);
+        WmClient wmClient = mock(WmClient.class);
+        billerCoreService.setWmClient(wmClient);
+
+        List<Integer> billerCategoryVersions = Collections.singletonList(1);
+        List<BillerCategory> expectedBillerCategories = new ArrayList<>();
+        when(wmClient.get(anyString())).thenReturn(expectedBillerCategories);
+
+        // Execute
+        List<BillerCategory> actualBillerCategories = billerCoreService.getBillerCategoriesList(1);
+
+        // Verify
+        assertEquals(expectedBillerCategories, actualBillerCategories);
+        verify(wmClient, times(1)).get(anyString());
+        verify(billerCategoryVersionMappingRepository, never()).getBillerCategoriesWithBillers(billerCategoryVersions);
+    }
+...........................................................................................................
+Fetch biller incorrect search keywords from cache:
+    @Test
+    public void test_fetch_biller_incorrect_search_keywords_from_cache() {
+        // Prepare
+        BillerSearchRepository billerSearchRepository = mock(BillerSearchRepository.class);
+        WmClient wmClient = mock(WmClient.class);
+        BillerCoreService billerCoreService = new BillerCoreService();
+        billerCoreService.setBillerSearchRepository(billerSearchRepository);
+        billerCoreService.setWmClient(wmClient);
+
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put("keyword1", Arrays.asList("biller1", "biller2"));
+        expectedMap.put("keyword2", Arrays.asList("biller3"));
+
+        // Mocking behavior
+        when(wmClient.get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY)).thenReturn(null);
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(Arrays.asList(
+            new BillerSearchDO(UUID.randomUUID(), "keyword1", true, Arrays.asList(new BillerDO(UUID.randomUUID(), "biller1", true))),
+            new BillerSearchDO(UUID.randomUUID(), "keyword1", true, Arrays.asList(new BillerDO(UUID.randomUUID(), "biller2", true))),
+            new BillerSearchDO(UUID.randomUUID(), "keyword2", true, Arrays.asList(new BillerDO(UUID.randomUUID(), "biller3", true)))
+        ));
+        when(wmClient.set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), anyInt(), eq(expectedMap))).thenReturn(mock(OperationFuture.class));
+
+        // Execute
+        HashMap<String, List<String>> result = billerCoreService.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertEquals(expectedMap, result);
+    }
+...........................................................................................................
+Fetch popular billers from database:
+    @Test
+    public void test_fetch_popular_billers() {
+        // Prepare
+        List<BillerDO> popularBillers = new ArrayList<>();
+        BillerDO biller1 = new BillerDO();
+        biller1.setBillerId(UUID.randomUUID());
+        biller1.setBillerName("Biller 1");
+        popularBillers.add(biller1);
+        BillerDO biller2 = new BillerDO();
+        biller2.setBillerId(UUID.randomUUID());
+        biller2.setBillerName("Biller 2");
+        popularBillers.add(biller2);
+        when(billerRepository.getPopularBillersAndSubBillers()).thenReturn(popularBillers);
+
+        // Execute
+        List<Biller> result = billerCoreService.getPopularBillers();
+
+        // Verify
+        assertEquals(2, result.size());
+        assertEquals(biller1.getBillerName(), result.get(0).getBillerName());
+        assertEquals(biller2.getBillerName(), result.get(1).getBillerName());
+    }
+...........................................................................................................
+Cache fetched biller categories list and update timestamp:
+    @Test
+    public void test_cache_fetched_biller_categories_list_and_update_timestamp() {
+        // Prepare
+        BillerCoreService billerCoreService = new BillerCoreService();
+        WmClient wmClient = mock(WmClient.class);
+        BillerCategoryVersionMappingRepository billerCategoryVersionMappingRepository = mock(BillerCategoryVersionMappingRepository.class);
+        BillerSearchRepository billerSearchRepository = mock(BillerSearchRepository.class);
+        billerCoreService.setWmClient(wmClient);
+        billerCoreService.setBillerCategoryVersionMappingRepository(billerCategoryVersionMappingRepository);
+        billerCoreService.setBillerSearchRepository(billerSearchRepository);
+
+        List<Integer> billerCategoryVersions = Collections.singletonList(1);
+        List<BillerCategory> billerCategoriesList = new ArrayList<>();
+        Map<Integer, List<BillerCategory>> versionToBillerCategoriesMap = new HashMap<>();
+        versionToBillerCategoriesMap.put(1, billerCategoriesList);
+
+        // Mocking behavior
+        when(wmClient.get(anyString())).thenReturn(null);
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(new ArrayList<>());
+
+        // Act
+        Map<Integer, List<BillerCategory>> result = billerCoreService.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        verify(wmClient, times(1)).get(anyString());
+        verify(billerCategoryVersionMappingRepository, times(1)).getBillerCategoriesWithBillers(billerCategoryVersions);
+        assertNotNull(result);
+    }
+    @Test
+    public void test_cache_fetched_biller_categories_list_and_update_timestamp() {
+        // Prepare
+        BillerCoreService billerCoreService = new BillerCoreService();
+        WmClient wmClient = mock(WmClient.class);
+        BillerCategoryVersionMappingRepository billerCategoryVersionMappingRepository = mock(BillerCategoryVersionMappingRepository.class);
+        BillerSearchRepository billerSearchRepository = mock(BillerSearchRepository.class);
+        billerCoreService.setWmClient(wmClient);
+        billerCoreService.setBillerCategoryVersionMappingRepository(billerCategoryVersionMappingRepository);
+        billerCoreService.setBillerSearchRepository(billerSearchRepository);
+
+        List<Integer> billerCategoryVersions = Collections.singletonList(1);
+        List<BillerCategory> billerCategoriesList = new ArrayList<>();
+        Map<Integer, List<BillerCategory>> versionToBillerCategoriesMap = new HashMap<>();
+        versionToBillerCategoriesMap.put(1, billerCategoriesList);
+
+        // Mocking behavior
+        when(wmClient.get(anyString())).thenReturn(null);
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(new ArrayList<>());
+
+        // Act
+        Map<Integer, List<BillerCategory>> result = billerCoreService.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        verify(wmClient, times(1)).get(anyString());
+        verify(billerCategoryVersionMappingRepository, times(1)).getBillerCategoriesWithBillers(billerCategoryVersions);
+        assertNotNull(result);
+    }
+...........................................................................................................
+...........................................................................................................
+...........................................................................................................
+...........................................................................................................
+...........................................................................................................
+...........................................................................................................
+...........................................................................................................
+...........................................................................................................
