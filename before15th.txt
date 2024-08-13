@@ -1,0 +1,491 @@
+Fetch popular billers from the database successfully:
+    @Test
+    public void test_fetch_popular_billers_successfully() {
+        // Initialize
+        GetpopularbillersTest getpopularbillersTest = new GetpopularbillersTest();
+    
+        // Define expected behavior
+        List<BillerDO> billerDOList = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDOList.add(billerDO);
+    
+        // Mock the repository method
+        when(getpopularbillersTest.billerRepository.getPopularBillersAndSubBillers()).thenReturn(billerDOList);
+    
+        // Call the method
+        List<Biller> result = getpopularbillersTest.getPopularBillers();
+    
+        // Verify the result
+        assertNotNull(result);
+        assertEquals(1, result.size());
+    }
+.............
+Map the fetched biller data to the Biller domain model correctly:
+    @Test
+    public void test_map_fetched_biller_data_to_domain_model_correctly() {
+        // Arrange
+        List<BillerDO> billerDOList = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setBillerId(UUID.randomUUID());
+        billerDO1.setBillerName("Test Biller 1");
+        // Add more properties as needed for testing
+
+        billerDOList.add(billerDO1);
+
+        when(billerRepository.getPopularBillersAndSubBillers()).thenReturn(billerDOList);
+
+        // Act
+        List<Biller> result = billerCoreService.getPopularBillers();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertEquals(billerDO1.getBillerName(), result.get(0).getBillerName());
+        // Add more assertions as needed
+    }
+....................
+Handle database connection issues gracefully:
+    @Test
+    public void test_handle_database_connection_issues_gracefully() {
+        // Initialize
+        GetpopularbillersTest getpopularbillersTest = new GetpopularbillersTest();
+    
+        // Define expected exceptions
+        BusinessException expectedException = assertThrows(BusinessException.class, () -> {
+            getpopularbillersTest.getPopularBillers();
+        });
+        assertEquals(ErrorConstants.GetPopularBillers.NO_POPULAR_BILLERS_FOUND, expectedException.getErrorCode());
+    }
+....................
+Handle mapping exceptions during the conversion of BillerDO to Biller:
+    @Test
+    public void test_handle_mapping_exceptions_during_conversion() {
+        // Prepare
+        List<BillerDO> billerDOList = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDOList.add(billerDO);
+    
+        when(billerRepository.getPopularBillersAndSubBillers()).thenReturn(billerDOList);
+        when(billerMapper.mapBillerDOsToBillerList(billerDOList)).thenThrow(new RuntimeException("Mapping exception"));
+
+        // Verify & Assert
+        assertThrows(ProcessingException.class, () -> {
+            getPopularBillers();
+        });
+    }
+..............
+Handle unexpected exceptions during database fetch:
+    @Test
+    public void test_handle_unexpected_exceptions_during_database_fetch() {
+        // Initialize
+        GetpopularbillersTest getpopularbillersTest = new GetpopularbillersTest();
+    
+        // Define expected exceptions
+        BusinessException expectedException = assertThrows(BusinessException.class, () -> {
+            // Call the method under test
+            getpopularbillersTest.getPopularBillers();
+        });
+    
+        // Verify the expected exception
+        assertEquals(ErrorConstants.GetPopularBillers.NO_POPULAR_BILLERS_FOUND, expectedException.getErrorCode());
+    }
+...........
+Log the error message when an exception occurs during database fetch:
+    @Test
+    public void log_error_message_on_database_fetch_exception() {
+        // Initialize
+        GetpopularbillersTest getpopularbillersTest = new GetpopularbillersTest();
+    
+        // Test
+        Exception exception = assertThrows(BusinessValidationException.class, () -> {
+            getpopularbillersTest.getPopularBillers();
+        });
+    
+        // Verify
+        assertTrue(exception.getMessage().contains("Error while fetch popular billers from DB"));
+    }
+.............
+Verify that the method handles large datasets efficiently:
+    @Test
+    public void test_get_popular_billers_handles_large_datasets_efficiently() {
+        // Initialize
+        BillerRepository billerRepository = mock(BillerRepository.class);
+        BillerMapper billerMapper = mock(BillerMapper.class);
+        Getpopularbillers getpopularbillers = new Getpopularbillers();
+        getpopularbillers.setBillerRepository(billerRepository);
+        getpopularbillers.setBillerMapper(billerMapper);
+
+        // Prepare
+        List<BillerDO> billerDOList = new ArrayList<>();
+        when(billerRepository.getPopularBillersAndSubBillers()).thenReturn(billerDOList);
+
+        // Execute
+        assertThrows(BusinessValidationException.class, () -> getpopularbillers.getPopularBillers());
+
+        // Verify
+        verify(billerRepository, times(1)).getPopularBillersAndSubBillers();
+        verify(billerMapper, never()).mapBillerDOsToBillerList(any());
+    }
+................................................................
+.................................................................
+................................................................
+Fetch processor biller IDs when data is present in the cache:
+    @Test
+    public void fetch_processor_biller_ids_when_data_is_present_in_cache() {
+        BillerRepository billerRepository = mock(BillerRepository.class);
+        BillerCoreService billerCoreService = new BillerCoreService();
+        ReflectionTestUtils.setField(billerCoreService, "billerRepository", billerRepository);
+
+        List<String> expectedIds = List.of("id1", "id2");
+        when(billerRepository.getProcessorBillerIdsOfBillersWhoseDataIsCached()).thenReturn(expectedIds);
+
+        List<String> result = billerCoreService.getProcessorBillerIdsOfBillersWhoseDataIsCached();
+
+        assertEquals(expectedIds, result);
+ assertNotNull(result);
+        assertFalse(result.isEmpty());
+    }
+................................................................
+Handle repository method throwing a generic exception:
+    @Test
+    public void test_handle_generic_exception_in_get_processor_biller_ids() {
+        // Initialize
+        Getprocessorbilleridsofbillerswhosedataiscached testedObject = new Getprocessorbilleridsofbillerswhosedataiscached();
+    
+        // Define behavior
+        when(billerRepository.getProcessorBillerIdsOfBillersWhoseDataIsCached()).thenThrow(new RuntimeException("Database connection error"));
+    
+        // Verify exception handling
+        assertThrows(ProcessingException.class, () -> {
+            testedObject.getProcessorBillerIdsOfBillersWhoseDataIsCached();
+        });
+    }
+................................................................
+Handle repository method throwing a specific database-related exception:
+    @Test
+    public void test_handle_specific_database_exception() {
+        // Initialize
+        BillerCoreService billerCoreService = new BillerCoreService();
+        CustomBillerRepository billerRepository = mock(CustomBillerRepository.class);
+        billerCoreService.setBillerRepository(billerRepository);
+
+        // Define behavior
+        when(billerRepository.getProcessorBillerIdsOfBillersWhoseDataIsCached()).thenThrow(new RuntimeException("Simulated DB Exception"));
+
+        // Verify exception handling
+        assertThrows(ProcessingException.class, () -> {
+            billerCoreService.getProcessorBillerIdsOfBillersWhoseDataIsCached();
+        });
+    }
+.................................................................
+Verify the exception message when an error occurs:
+    @Test
+    public void verify_exception_message_on_error() {
+        // Initialize
+        Getprocessorbilleridsofbillerswhosedataiscached obj = new Getprocessorbilleridsofbillerswhosedataiscached();
+    
+        // Test
+        Exception exception = assertThrows(ProcessingException.class, () -> {
+            obj.getProcessorBillerIdsOfBillersWhoseDataIsCached();
+        });
+
+        // Verify
+        String expectedMessage = "Error while fetching processorBillerIds from DB";
+        String actualMessage = exception.getMessage();
+        assertTrue(actualMessage.contains(expectedMessage));
+    }
+................................................................
+Validate the method's behavior when the repository is unavailable:
+    @Test
+    public void test_repository_unavailable() {
+        // Initialize
+        BillerCoreService billerCoreService = new BillerCoreService();
+        when(billerRepository.getProcessorBillerIdsOfBillersWhoseDataIsCached()).thenThrow(new RuntimeException());
+
+        // Verify
+        assertThrows(ProcessingException.class, () -> {
+            billerCoreService.getProcessorBillerIdsOfBillersWhoseDataIsCached();
+        });
+    }
+................................................................
+................................................................
+.................................................................
+Returns an empty set when all cache evictions succeed:
+    @Test
+    public void test_evict_cache_for_biller_and_update_timestamp_data_returns_empty_set_on_success() {
+        // Prepare
+        Evictcacheforbillerandupdatetimestampdata evictCache = new Evictcacheforbillerandupdatetimestampdata();
+        evictCache.setWmClient(mock(WmClient.class));
+
+        // Define input
+        List<String> processorBillerIdsToEvict = Arrays.asList("123", "456");
+
+        // Mock successful cache evictions
+        when(evictCache.getWmClient().delete("123_WPS_BILLER_DATA")).thenReturn(mock(OperationFuture.class));
+        when(evictCache.getWmClient().delete("123_WPS_BILLER_DATA_UPDATED_AT")).thenReturn(mock(OperationFuture.class));
+        when(evictCache.getWmClient().delete("456_WPS_BILLER_DATA")).thenReturn(mock(OperationFuture.class));
+        when(evictCache.getWmClient().delete("456_WPS_BILLER_DATA_UPDATED_AT")).thenReturn(mock(OperationFuture.class));
+
+        // Invoke the method
+        Set<String> result = evictCache.evictCacheForBillerAndUpdateTimestampData(processorBillerIdsToEvict);
+
+        // Verify and assert
+        assertTrue(result.isEmpty());
+    }
+................................................................
+Verifies that retryProcessorBillerIds contains correct IDs for failed deletions:
+    @Test
+    public void test_evict_cache_for_biller_and_update_timestamp_data() {
+        // Prepare
+        Evictcacheforbillerandupdatetimestampdata evictCache = new Evictcacheforbillerandupdatetimestampdata();
+        evictCache.setWmClient(mock(WmClient.class));
+
+        List<String> processorBillerIdsToEvict = Arrays.asList("123", "456", "789");
+
+        // Act
+        Set<String> retryProcessorBillerIds = evictCache.evictCacheForBillerAndUpdateTimestampData(processorBillerIdsToEvict);
+
+        // Assert
+        assertEquals(3, retryProcessorBillerIds.size());
+        assertTrue(retryProcessorBillerIds.contains("123"));
+        assertTrue(retryProcessorBillerIds.contains("456"));
+        assertTrue(retryProcessorBillerIds.contains("789"));
+    }
+................................................................
+Validates that the method does not modify the input list of processor biller IDs:
+    @Test
+    public void test_evict_cache_for_biller_and_update_timestamp_data_does_not_modify_input_list() {
+        // Initialize the class object
+        Evictcacheforbillerandupdatetimestampdata evictCache = new Evictcacheforbillerandupdatetimestampdata();
+
+        // Define input list of processor biller IDs
+        List<String> processorBillerIdsToEvict = Arrays.asList("123", "456", "789");
+
+        // Call the method
+        Set<String> retryProcessorBillerIds = evictCache.evictCacheForBillerAndUpdateTimestampData(processorBillerIdsToEvict);
+
+        // Assertions
+        assertEquals(new HashSet<>(processorBillerIdsToEvict), new HashSet<>(processorBillerIdsToEvict));
+        assertTrue(retryProcessorBillerIds.isEmpty());
+    }
+................................................................
+Handles scenarios where some cache entries do not exist:
+    @Test
+    public void test_evict_cache_for_biller_and_update_timestamp_data() {
+        // Prepare
+        Evictcacheforbillerandupdatetimestampdata evictCache = new Evictcacheforbillerandupdatetimestampdata();
+        evictCache.setWmClient(mock(WmClient.class));
+
+        // Define processorBillerIdsToEvict
+        List<String> processorBillerIdsToEvict = Arrays.asList("123", "456");
+
+        // Define expected retryProcessorBillerIds
+        Set<String> expectedRetryProcessorBillerIds = new HashSet<>();
+        expectedRetryProcessorBillerIds.add("123");
+        expectedRetryProcessorBillerIds.add("456");
+
+        // Define mock OperationFuture
+        OperationFuture operationFuture = mock(OperationFuture.class);
+        when(operationFuture.getStatus()).thenReturn(new OperationStatus(true, StatusCode.SUCCESS));
+        when(evictCache.getWmClient().delete(anyString())).thenReturn(operationFuture);
+
+        // Act
+        Set<String> retryProcessorBillerIds = evictCache.evictCacheForBillerAndUpdateTimestampData(processorBillerIdsToEvict);
+
+        // Assert
+        assertEquals(expectedRetryProcessorBillerIds, retryProcessorBillerIds);
+    }
+.................................................................
+Handles multiple processor biller IDs in a single call:
+    @Test
+    public void test_evict_cache_for_biller_and_update_timestamp_data_handles_multiple_processor_biller_ids() {
+        // Initialize the wmClient
+        WmClient wmClient = mock(WmClient.class);
+
+        // Initialize the processorBillerIdsToEvict
+        List<String> processorBillerIdsToEvict = Arrays.asList("123", "456", "789");
+
+        // Mock the delete operation for biller data cache key
+        OperationFuture<Boolean> deleteBillerDataFuture = mock(OperationFuture.class);
+        when(wmClient.delete("123_WPS_BILLER_DATA")).thenReturn(deleteBillerDataFuture);
+        when(wmClient.delete("456_WPS_BILLER_DATA")).thenReturn(deleteBillerDataFuture);
+        when(wmClient.delete("789_WPS_BILLER_DATA")).thenReturn(deleteBillerDataFuture);
+
+        // Mock the delete operation for biller data updated at cache key
+        OperationFuture<Boolean> deleteBillerDataUpdatedAtFuture = mock(OperationFuture.class);
+        when(wmClient.delete("123_WPS_BILLER_DATA_UPDATED_AT")).thenReturn(deleteBillerDataUpdatedAtFuture);
+        when(wmClient.delete("456_WPS_BILLER_DATA_UPDATED_AT")).thenReturn(deleteBillerDataUpdatedAtFuture);
+        when(wmClient.delete("789_WPS_BILLER_DATA_UPDATED_AT")).thenReturn(deleteBillerDataUpdatedAtFuture);
+
+        // Call the method under test
+        Set<String> retryProcessorBillerIds = evictCacheForBillerAndUpdateTimestampData(processorBillerIdsToEvict);
+
+        // Verify the delete operations
+        verify(wmClient, times(3)).delete(anyString());
+    }
+................................................................
+................................................................
+................................................................
+Fetches data from cache when cache is available:
+    @Test
+    public void test_fetches_data_from_cache_when_available() {
+        BillerCoreService service = new BillerCoreService();
+        WmClient wmClient = mock(WmClient.class);
+        service.wmClient = wmClient;
+        String cacheKey = WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY;
+        HashMap<String, List<String>> expectedData = new HashMap<>();
+        when(wmClient.get(cacheKey)).thenReturn(expectedData);
+
+        HashMap<String, List<String>> result = service.fetchBillerIncorrectSearchKeywordMap();
+
+        assertEquals(expectedData, result);
+    }
+.................................................................
+Fetches data from database when cache is unavailable:
+    @Test
+    public void test_fetch_biller_incorrect_search_keyword_map_fetches_data_from_database_when_cache_is_unavailable() {
+        // Initialize
+        Fetchbillerincorrectsearchkeywordmap fetchbillerincorrectsearchkeywordmap = new Fetchbillerincorrectsearchkeywordmap();
+    
+        // Test logic
+        HashMap<String, List<String>> result = fetchbillerincorrectsearchkeywordmap.fetchBillerIncorrectSearchKeywordMap();
+    
+        // Assertions or verifications
+        assertNotNull(result);
+        // Add more assertions as needed
+    }
+................................................................
+Logs successful retrieval of data from cache:
+    @Test
+    public void test_logs_successful_retrieval_from_cache() {
+        FetchbillerincorrectsearchkeywordmapTest fetchbillerincorrectsearchkeywordmapTest = new FetchbillerincorrectsearchkeywordmapTest();
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put("key1", List.of("value1", "value2"));
+    
+        // Mocking wmClient.get() to return expectedMap
+        when(fetchbillerincorrectsearchkeywordmapTest.wmClient.get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY))
+            .thenReturn(expectedMap);
+    
+        // Call the method under test
+        HashMap<String, List<String>> result = fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+    
+        // Verify the log message
+        verify(fetchbillerincorrectsearchkeywordmapTest.log).info("Biller Incorrect Search Keywords from Cache : [{}]", expectedMap);
+    
+        // Assertions
+        assertEquals(expectedMap, result);
+    }
+................................................................
+Returns the fetched data correctly:
+    @Test
+    public void test_fetch_biller_incorrect_search_keyword_map() {
+        FetchbillerincorrectsearchkeywordmapTest fetchbillerincorrectsearchkeywordmapTest = new FetchbillerincorrectsearchkeywordmapTest();
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put("key1", List.of("value1", "value2"));
+    
+        // Mocking wmClient.get(cacheKey) to return expectedMap
+        when(wmClient.get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY)).thenReturn(expectedMap);
+    
+        HashMap<String, List<String>> result = fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+    
+        assertEquals(expectedMap, result);
+    }
+................................................................
+Cache is empty or null:
+    @Test
+    public void test_fetch_biller_incorrect_search_keyword_map_cache_empty_or_null() {
+        FetchbillerincorrectsearchkeywordmapTest fetchbillerincorrectsearchkeywordmapTest = new FetchbillerincorrectsearchkeywordmapTest();
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+    
+        when(wmClient.get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY)).thenReturn(null);
+        when(fetchbillerincorrectsearchkeywordmapTest.fetchAndCacheBillerIncorrectSearchKeywordMap()).thenReturn(expectedMap);
+    
+        HashMap<String, List<String>> result = fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+    
+        assertNull(result);
+        verify(wmClient, times(1)).get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY);
+        verify(fetchbillerincorrectsearchkeywordmapTest, times(1)).fetchAndCacheBillerIncorrectSearchKeywordMap();
+    }
+................................................................
+Database fetch returns empty or null data:
+    @Test
+    public void test_fetch_biller_incorrect_search_keyword_map_database_fetch_returns_empty_or_null_data() {
+        Fetchbillerincorrectsearchkeywordmap fetchbillerincorrectsearchkeywordmap = new Fetchbillerincorrectsearchkeywordmap();
+    
+        // Mocking wmClient.get() to return null
+        when(wmClient.get(anyString())).thenReturn(null);
+    
+        HashMap<String, List<String>> result = fetchbillerincorrectsearchkeywordmap.fetchBillerIncorrectSearchKeywordMap();
+    
+        assertNull(result);
+    }
+................................................................
+Cache retrieval throws an exception:
+    @Test
+    public void test_cache_retrieval_throws_exception() {
+        FetchbillerincorrectsearchkeywordmapTest fetchbillerincorrectsearchkeywordmapTest = new FetchbillerincorrectsearchkeywordmapTest();
+    
+        // Mocking wmClient to throw an exception when get method is called
+        when(fetchbillerincorrectsearchkeywordmapTest.wmClient.get(anyString())).thenThrow(new RuntimeException("Mocked exception"));
+    
+        // Verify that the method throws an exception when cache retrieval fails
+        assertThrows(Exception.class, () -> {
+            fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+        });
+    }
+.................................................................
+Handles large datasets efficiently:
+    @Test
+    public void test_handles_large_datasets_efficiently() {
+        FetchbillerincorrectsearchkeywordmapTest fetchbillerincorrectsearchkeywordmapTest = new FetchbillerincorrectsearchkeywordmapTest();
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put("key1", Arrays.asList("value1", "value2"));
+        expectedMap.put("key2", Arrays.asList("value3", "value4"));
+
+        // Mocking wmClient.get() to return null to simulate cache miss
+        when(wmClient.get(anyString())).thenReturn(null);
+
+        // Mocking fetchAndCacheBillerIncorrectSearchKeywordMap() to return expectedMap
+        when(fetchbillerincorrectsearchkeywordmapTest.fetchAndCacheBillerIncorrectSearchKeywordMap()).thenReturn(expectedMap);
+
+        HashMap<String, List<String>> result = fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+
+        assertNull(result); // Cache miss should return null
+        verify(wmClient, times(1)).get(anyString());
+        verify(fetchbillerincorrectsearchkeywordmapTest, times(1)).fetchAndCacheBillerIncorrectSearchKeywordMap();
+    }
+................................................................
+Ensures data consistency between cache and database:
+    @Test
+    public void test_fetch_biller_incorrect_search_keyword_map() {
+        FetchbillerincorrectsearchkeywordmapTest fetchbillerincorrectsearchkeywordmapTest = new FetchbillerincorrectsearchkeywordmapTest();
+    
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put("key1", List.of("value1", "value2"));
+        expectedMap.put("key2", List.of("value3"));
+    
+        when(wmClient.get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY)).thenReturn(null);
+        when(fetchbillerincorrectsearchkeywordmapTest.fetchAndCacheBillerIncorrectSearchKeywordMap()).thenReturn(expectedMap);
+    
+        HashMap<String, List<String>> result = fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+    
+        assertNull(result); // Cache miss should return null before fetching from DB
+        verify(wmClient, times(1)).get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY);
+        verify(fetchbillerincorrectsearchkeywordmapTest, times(1)).fetchAndCacheBillerIncorrectSearchKeywordMap();
+    }
+................................................................
+Handles concurrent access to the cache:
+    @Test
+    public void test_handles_concurrent_access_to_cache() {
+        // Initialize
+        FetchbillerincorrectsearchkeywordmapTest fetchbillerincorrectsearchkeywordmapTest = new FetchbillerincorrectsearchkeywordmapTest();
+    
+        // Test logic
+        HashMap<String, List<String>> result1 = fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+        HashMap<String, List<String>> result2 = fetchbillerincorrectsearchkeywordmapTest.fetchBillerIncorrectSearchKeywordMap();
+    
+        // Assertions
+        assertNotNull(result1);
+        assertNotNull(result2);
+        assertEquals(result1, result2);
+    }
