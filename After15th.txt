@@ -1,0 +1,989 @@
+Successfully fetches and caches biller incorrect search data update timestamp:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        ReloadincorrectsearchdataincacheTest reloadTest = new ReloadincorrectsearchdataincacheTest();
+    
+        reloadTest.fetchAndCacheBillerIncorrectSearchKeywordMap();
+        reloadTest.fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp();
+    }
+......................................................
+Successfully fetches and caches biller incorrect search keyword map:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        BillerCoreService billerCoreService = new BillerCoreService();
+    
+        // Mocking wmClient to avoid actual cache operations
+        WmClient wmClientMock = mock(WmClient.class);
+        when(wmClientMock.get(anyString())).thenReturn(null);
+        doNothing().when(wmClientMock).set(anyString(), anyInt(), any());
+        billerCoreService.wmClient = wmClientMock;
+    
+        billerCoreService.reloadIncorrectSearchDataInCache();
+    
+        verify(wmClientMock, times(1)).get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY);
+        verify(wmClientMock, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), eq(0), any());
+        verify(wmClientMock, times(1)).get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORD_MAP_UPDATED_AT_CACHE_KEY);
+        verify(wmClientMock, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORD_MAP_UPDATED_AT_CACHE_KEY), eq(0), any());
+    }
+......................................................
+Handles exceptions during fetching data from the database:
+    @Test
+    public void test_handles_exceptions_during_fetching_data() {
+        ReloadincorrectsearchdataincacheTest reloadincorrectsearchdataincacheTest = new ReloadincorrectsearchdataincacheTest();
+    
+        // Mocking the method calls to handle exceptions
+        doThrow(new RuntimeException("Error while fetching biller incorrect search data"))
+            .when(wmClient).get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORD_MAP_UPDATED_AT_CACHE_KEY);
+    
+        doThrow(new RuntimeException("Error while fetching biller incorrect search data update info from cache"))
+            .when(wmClient).get(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORD_MAP_UPDATED_AT_CACHE_KEY);
+    
+        // Verify that exceptions are handled during the method call
+        assertDoesNotThrow(() -> reloadincorrectsearchdataincacheTest.reloadIncorrectSearchDataInCache());
+    }
+......................................................
+Handles exceptions during caching data:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        ReloadincorrectsearchdataincacheTest reloadTest = new ReloadincorrectsearchdataincacheTest();
+    
+        // Mocking the method calls to handle exceptions during caching data
+        doThrow(new RuntimeException("Error while fetching incorrect biller search data from DB"))
+            .when(wmClient).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), anyInt(), any());
+        doThrow(new RuntimeException("Error while fetching biller incorrect search data update info from cache"))
+            .when(wmClient).get(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORD_MAP_UPDATED_AT_CACHE_KEY));
+    
+        // Verify that exceptions are handled during caching data
+        assertThrows(RuntimeException.class, () -> reloadTest.reloadIncorrectSearchDataInCache());
+    }
+......................................................
+Verifies that the cache is updated only if the data is fetched successfully:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        // Initialize BillerCoreService object
+        BillerCoreService billerCoreService = new BillerCoreService();
+
+        // Test that cache is updated only if the data is fetched successfully
+        assertDoesNotThrow(() -> {
+            billerCoreService.reloadIncorrectSearchDataInCache();
+        });
+    }
+......................................................
+Ensures that the cache eviction logic is not triggered inadvertently:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        BillerCoreService billerCoreService = new BillerCoreService();
+    
+        // Mocking the method calls to avoid actual cache operations
+        doNothing().when(wmClient).set(anyString(), anyInt(), any());
+        doReturn(new HashMap<>()).when(wmClient).get(anyString());
+    
+        billerCoreService.reloadIncorrectSearchDataInCache();
+    
+        // Verify that the methods were called
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), eq(0), any());
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORD_MAP_UPDATED_AT_CACHE_KEY), eq(0), any());
+    }
+......................................................
+......................................................
+......................................................
+Successfully reloads cache when billerCategoryVersions is not empty:
+    @Test
+    public void test_reload_cache_for_biller_category_data_when_versions_not_empty() {
+        // Initialize
+        Reloadcacheforbillercategorydata reloadCacheForBillerCategoryData = new Reloadcacheforbillercategorydata();
+
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+
+        // Verify and Assert
+        reloadCacheForBillerCategoryData.reloadCacheForBillerCategoryData(billerCategoryVersions);
+
+        // Add assertions here
+    }
+......................................................
+Handles scenarios where fetchAndCacheBillerCategoriesMap throws an exception:
+    @Test
+    public void test_reload_cache_for_biller_category_data_exception() {
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+    
+        // Mocking a scenario where fetchAndCacheBillerCategoriesMap throws an exception
+        doThrow(new RuntimeException("Error fetching and caching biller categories map")).when(wmClient).set(anyString(), anyInt(), any());
+    
+        // Verify that the method handles the exception gracefully
+        assertDoesNotThrow(() -> reloadCache.reloadCacheForBillerCategoryData(Arrays.asList(1, 2, 3)));
+    }
+......................................................
+Ensures fetchAndCacheBillerCategoriesMap is not called when billerCategoryVersions is empty:
+    @Test
+    public void ensures_not_called_when_empty_biller_category_versions() {
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+    
+        reloadCache.reloadCacheForBillerCategoryData(Collections.emptyList());
+    
+        verify(reloadCache, never()).fetchAndCacheBillerCategoriesMap(any());
+    }
+......................................................
+Handles scenarios where fetchAndCacheBillerCategoryDataUpdatedAtTimestamp throws an exception:
+    @Test
+    public void test_reload_cache_for_biller_category_data_when_fetch_and_cache_biller_category_data_updated_at_timestamp_throws_exception() {
+        // Initialize the class object
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+
+        // Prepare test data
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+
+        // Mock the behavior of fetchAndCacheBillerCategoriesMap
+        when(reloadCache.fetchAndCacheBillerCategoriesMap(billerCategoryVersions)).thenThrow(new RuntimeException("Simulating an exception"));
+
+        // Call the method under test
+        reloadCache.reloadCacheForBillerCategoryData(billerCategoryVersions);
+
+        // Verify the expected behavior
+        verify(reloadCache, times(1)).fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+        verify(reloadCache, never()).fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+    }
+    ...
+......................................................
+......................................................
+......................................................
+Successfully fetches the timestamp from the repository:
+    @Test
+    public void test_fetches_timestamp_from_repository() {
+        BillerCoreService service = new BillerCoreService();
+        BillerCategoryVersionMappingRepository mockRepo = mock(BillerCategoryVersionMappingRepository.class);
+        WmClient mockClient = mock(WmClient.class);
+        service.billerCategoryVersionMappingRepository = mockRepo;
+        service.wmClient = mockClient;
+
+        Date expectedDate = new Date();
+        when(mockRepo.getBillerCategoryDataUpdateTimestamp()).thenReturn(expectedDate);
+
+        Date result = service.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+
+        assertEquals(expectedDate, result);
+    }
+......................................................
+Successfully caches the fetched timestamp:
+    @Test
+    public void test_caches_fetched_timestamp() {
+        BillerCoreService service = new BillerCoreService();
+        BillerCategoryVersionMappingRepository mockRepo = mock(BillerCategoryVersionMappingRepository.class);
+        WmClient mockClient = mock(WmClient.class);
+        service.billerCategoryVersionMappingRepository = mockRepo;
+        service.wmClient = mockClient;
+
+        Date expectedDate = new Date();
+        when(mockRepo.getBillerCategoryDataUpdateTimestamp()).thenReturn(expectedDate);
+        OperationFuture<Boolean> future = mock(OperationFuture.class);
+        when(mockClient.set(anyString(), anyInt(), any())).thenReturn(future);
+
+        service.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+
+        verify(mockClient).set(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY, 0, expectedDate);
+    }
+......................................................
+Repository throws an exception while fetching the timestamp:
+    @Test
+    public void test_repository_throws_exception_while_fetching_timestamp() {
+        // Initialize
+        Fetchandcachebillercategorydataupdatedattimestamp fetchAndCache = new Fetchandcachebillercategorydataupdatedattimestamp();
+    
+        // Define behavior
+        when(billerCategoryVersionMappingRepository.getBillerCategoryDataUpdateTimestamp()).thenThrow(Exception.class);
+    
+        // Verify exception is thrown
+        assertThrows(ProcessingException.class, () -> {
+            fetchAndCache.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+        });
+    }
+......................................................
+Cache operation fails:
+    @Test
+    public void test_cache_operation_fails() {
+        // Initialize
+        Fetchandcachebillercategorydataupdatedattimestamp fetchAndCache = new Fetchandcachebillercategorydataupdatedattimestamp();
+    
+        // Mocking behavior
+        when(billerCategoryVersionMappingRepository.getBillerCategoryDataUpdateTimestamp()).thenThrow(new RuntimeException("DB connection failed"));
+        when(wmClient.set(eq(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY), eq(0), any(Date.class))).thenReturn(mock(OperationFuture.class));
+    
+        // Verify cache operation fails
+        assertThrows(ProcessingException.class, () -> fetchAndCache.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp());
+    }
+......................................................
+Cache listener throws an exception:
+    @Test
+    public void cache_listener_throws_an_exception() {
+        // Initialize
+        FetchandcachebillercategorydataupdatedattimestampTest fetchAndCacheTest = new FetchandcachebillercategorydataupdatedattimestampTest();
+    
+        // Define expected behavior
+        doThrow(new RuntimeException("Simulated exception")).when(fetchAndCacheTest.wmClient).set(anyString(), anyInt(), any());
+    
+        // Verify exception is thrown
+        assertThrows(ProcessingException.class, () -> fetchAndCacheTest.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp());
+    }
+......................................................
+Handles unexpected exceptions gracefully:
+    @Test
+    public void test_fetch_and_cache_biller_category_data_updated_at_timestamp() {
+        // Initialize
+        FetchandcachebillercategorydataupdatedattimestampTest fetchAndCacheTest = new FetchandcachebillercategorydataupdatedattimestampTest();
+    
+        // Define expected behavior
+        Date expectedDate = new Date();
+    
+        // Mock behavior
+        when(fetchAndCacheTest.wmClient.set(eq(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY), eq(0), eq(expectedDate))).thenReturn(new OperationFuture<Boolean>());
+        when(fetchAndCacheTest.billerCategoryVersionMappingRepository.getBillerCategoryDataUpdateTimestamp()).thenReturn(expectedDate);
+    
+        // Perform the test
+        Date result = fetchAndCacheTest.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+    
+        // Verify the result
+        assertEquals(expectedDate, result);
+    }
+......................................................
+......................................................
+......................................................
+Fetches timestamp from cache successfully:
+    @Test
+    public void fetches_timestamp_from_cache_successfully() {
+        // Initialize the wmClient mock or stub
+        WmClient wmClient = mock(WmClient.class);
+
+        // Prepare the expected Date object
+        Date expectedDate = new Date();
+
+        // Mock the behavior of wmClient.get() to return the expected Date object
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(expectedDate);
+
+        // Create an instance of the class under test
+        BillerCoreService billerCoreService = new BillerCoreService();
+        billerCoreService.wmClient = wmClient;
+
+        // Call the method under test
+        Date result = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+
+        // Verify that the result matches the expected Date object
+        assertEquals(expectedDate, result);
+    }
+......................................................
+Fetches timestamp from database when cache miss occurs:
+    @Test
+    public void test_fetch_biller_category_data_last_updated_at_timestamp() {
+        // Initialize the wmClient mock or stub
+        WmClient wmClient = mock(WmClient.class);
+
+        // Setup the behavior for cache miss
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(null);
+        Date expectedTimestamp = new Date();
+        when(fetchAndCacheBillerCategoryDataUpdatedAtTimestamp()).thenReturn(expectedTimestamp);
+
+        // Call the method under test
+        Date result = fetchBillerCategoryDataLastUpdatedAtTimestamp();
+
+        // Verify the result
+        assertEquals(expectedTimestamp, result);
+    }
+......................................................
+Returns the correct timestamp after fetching from cache:
+    @Test
+    public void test_fetch_biller_category_data_last_updated_at_timestamp() {
+        // Initialize the wmClient mock or stub
+        WmClient wmClient = mock(WmClient.class);
+
+        // Prepare the expected timestamp
+        Date expectedTimestamp = new Date();
+
+        // Mock the behavior of wmClient.get() to return the expected timestamp
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(expectedTimestamp);
+
+        // Create an instance of the class under test
+        BillerCoreService billerCoreService = new BillerCoreService();
+        billerCoreService.wmClient = wmClient;
+
+        // Call the method and get the actual result
+        Date actualTimestamp = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+
+        // Verify that the method returns the correct timestamp after fetching from cache
+        assertEquals(expectedTimestamp, actualTimestamp);
+    }
+......................................................
+Returns the correct timestamp after fetching from database:
+    @Test
+    public void test_fetch_biller_category_data_last_updated_at_timestamp() {
+        // Initialize
+        BillerCoreService billerCoreService = new BillerCoreService();
+        WmClient wmClient = mock(WmClient.class);
+        billerCoreService.setWmClient(wmClient);
+
+        // Prepare data
+        Date expectedTimestamp = new Date();
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(expectedTimestamp);
+    
+        // Test
+        Date actualTimestamp = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+    
+        // Verify
+        assertEquals(expectedTimestamp, actualTimestamp);
+    }
+......................................................
+Cache fetch throws an exception:
+    @Test
+    public void test_cache_fetch_throws_exception() {
+        // Initialize the wmClient mock object
+        WmClient wmClient = mock(WmClient.class);
+
+        // Setup the wmClient to throw an exception when get method is called
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenThrow(new RuntimeException("Mock Exception"));
+
+        // Create an instance of the class under test
+        BillerCoreService billerCoreService = new BillerCoreService();
+        billerCoreService.setWmClient(wmClient);
+
+        // Perform the test
+        assertThrows(Exception.class, () -> billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp());
+    }
+......................................................
+Database fetch throws an exception:
+    @Test
+    public void test_database_fetch_throws_exception() {
+        // Initialize the wmClient mock object
+        WmClient wmClient = mock(WmClient.class);
+
+        // Setup the mock object behavior for cache miss
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenThrow(new RuntimeException("Simulating cache miss"));
+
+        // Initialize the BillerCoreService object
+        BillerCoreService billerCoreService = new BillerCoreService();
+        billerCoreService.wmClient = wmClient;
+
+        // Call the method and assert the exception
+        assertThrows(Exception.class, () -> billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp());
+    }
+......................................................
+Cache contains a null value:
+    @Test
+    public void test_cache_contains_null_value() {
+        FetchbillercategorydatalastupdatedattimestampTest fetchbillercategorydatalastupdatedattimestampTest = new FetchbillercategorydatalastupdatedattimestampTest();
+        fetchbillercategorydatalastupdatedattimestampTest.wmClient = mock(WmClient.class);
+        when(fetchbillercategorydatalastupdatedattimestampTest.wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(null);
+
+        Date result = fetchbillercategorydatalastupdatedattimestampTest.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+
+        assertNull(result);
+    }
+......................................................
+Database contains an invalid date format:
+    @Test
+    public void test_database_contains_invalid_date_format() {
+        BillerCoreService billerCoreService = new BillerCoreService();
+        Date expectedDate = new Date();
+    
+        // Mocking wmClient.get() to return null
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(null);
+    
+        // Mocking fetchAndCacheBillerCategoryDataUpdatedAtTimestamp() to return expectedDate
+        when(billerCoreService.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp()).thenReturn(expectedDate);
+    
+        Date result = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+    
+        assertNull(result);
+        verify(wmClient, times(1)).get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY);
+        verify(billerCoreService, times(1)).fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+    }
+......................................................
+Measures performance of cache vs database fetch:
+    @Test
+    public void test_fetch_biller_category_data_last_updated_at_timestamp() {
+        // Initialize
+        BillerCoreService billerCoreService = new BillerCoreService();
+    
+        // Test cache hit scenario
+        Date expectedDate = new Date();
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(expectedDate);
+        Date resultDate = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+        assertEquals(expectedDate, resultDate);
+    
+        // Test cache miss scenario
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(null);
+        Date expectedDateFromDB = new Date();
+        when(billerCoreService.fetchAndCacheBillerCategoryDataUpdatedAtTimestamp()).thenReturn(expectedDateFromDB);
+        Date resultDateFromDB = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+        assertEquals(expectedDateFromDB, resultDateFromDB);
+    }
+......................................................
+Handles concurrent access to cache and database:
+    @Test
+    public void test_fetch_biller_category_data_last_updated_at_timestamp() {
+        // Initialize
+        FetchbillercategorydatalastupdatedattimestampTest fetchbillercategorydatalastupdatedattimestampTest = new FetchbillercategorydatalastupdatedattimestampTest();
+        fetchbillercategorydatalastupdatedattimestampTest.wmClient = mock(WmClient.class);
+        fetchbillercategorydatalastupdatedattimestampTest.log = mock(Logger.class);
+
+        // Prepare
+        Date expectedDate = new Date();
+        when(fetchbillercategorydatalastupdatedattimestampTest.wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(expectedDate);
+
+        // Execute
+        Date result = fetchbillercategorydatalastupdatedattimestampTest.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+
+        // Verify
+        assertEquals(expectedDate, result);
+    }
+......................................................
+Ensures cache is updated after fetching from database:
+    @Test
+    public void ensures_cache_updated_after_fetching_from_database() {
+        // Initialize the wmClient mock or stub
+        WmClient wmClient = mock(WmClient.class);
+
+        // Initialize the BillerCoreService object
+        BillerCoreService billerCoreService = new BillerCoreService();
+        billerCoreService.wmClient = wmClient;
+
+        // Define the expected behavior for wmClient.get() method
+        Date expectedDate = new Date();
+        when(wmClient.get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(expectedDate);
+
+        // Call the method under test
+        Date result = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
+
+        // Verify the cache key used in wmClient.get()
+        verify(wmClient).get(WPSConstants.Biller.BILLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY);
+
+        // Verify the result is the expected date
+        assertEquals(expectedDate, result);
+    }
+......................................................
+......................................................
+......................................................
+Checks the behavior when the cache client is unavailable:
+    @Test
+    public void test_cache_unavailable_behavior() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions))
+            .thenThrow(new RuntimeException("Simulating DB fetch error"));
+
+        assertThrows(ProcessingException.class, () -> {
+            code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+        });
+
+        verifyNoInteractions(wmClient);
+    }
+......................................................
+Confirms the logging of error messages when exceptions occur:
+    @Test
+    public void test_fetch_and_cache_biller_categories_map_with_exception() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenThrow(new RuntimeException("DB Connection Error"));
+
+        ProcessingException exception = assertThrows(ProcessingException.class, () -> code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions));
+
+        assertEquals(ErrorConstants.Common.BILLER_CATEGORY_VERSION_MAPPING_DB_FETCH_ERROR, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Error while fetching BillerCategoryVersionMapping data from DB for billerCategoryVersions"));
+    }
+......................................................
+Handles exceptions during caching operations:
+    @Test
+    public void test_handles_exceptions_during_caching_operations() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        BillerCategory mockBillerCategory = new BillerCategory();
+        mockBillerCategory.setId(UUID.randomUUID());
+        mockBillerCategory.setCategoryName("mock_category_name");
+        mockBillerCategory.setImageUrl("mock_image_url");
+        mockBillerCategory.setBillerCategoryVersion(1);
+        mockBillerCategoriesList.add(mockBillerCategory);
+
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList)).thenReturn(mockBillerCategoriesList);
+
+        Map<Integer, List<BillerCategory>> expectedMap = new HashMap<>();
+        expectedMap.put(1, mockBillerCategoriesList);
+
+        doThrow(new RuntimeException("Mocked exception")).when(wmClient).set(anyString(), anyInt(), any());
+
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        assertEquals(expectedMap, result);
+    }
+    @Test
+    public void test_handles_exceptions_during_caching_operations() {
+        ...
+    }
+......................................................
+Handles exceptions thrown by the repository:
+    @Test
+    public void test_handles_exceptions_thrown_by_repository() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+    
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions))
+            .thenThrow(new RuntimeException("Simulating repository exception"));
+    
+        assertThrows(ProcessingException.class, () -> {
+            code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+        });
+    }
+......................................................
+Handles null response from repository:
+    @Test
+    public void test_handles_null_response_from_repository() {
+        // Prepare
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(anyList())).thenReturn(null);
+
+        // Execute
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(Arrays.asList(1, 2, 3));
+
+        // Verify
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Returns a map of biller category versions to biller categories:
+    @Test
+    public void returns_map_of_biller_category_versions_to_biller_categories() {
+        List<Integer> versions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(versions)).thenReturn(mockList);
+        Map<Integer, List<BillerCategory>> result = codeUnderTest.fetchAndCacheBillerCategoriesMap(versions);
+        assertTrue(result instanceof HashMap);
+    }
+......................................................
+Caches the mapped biller categories with correct cache keys:
+    @Test
+    public void caches_mapped_biller_categories_with_correct_cache_keys() {
+        List<Integer> versions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockList = new ArrayList<>();
+        List<BillerCategory> billerCategories = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(versions)).thenReturn(mockList);
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockList)).thenReturn(billerCategories);
+        codeUnderTest.fetchAndCacheBillerCategoriesMap(versions);
+        verify(wmClient).set(anyString(), eq(0), eq(billerCategories));
+    }
+......................................................
+Maps fetched biller categories to domain model:
+    @Test
+    public void maps_fetched_biller_categories_to_domain_model() {
+        List<Integer> versions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(versions)).thenReturn(mockList);
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockList)).thenReturn(new ArrayList<>());
+        codeUnderTest.fetchAndCacheBillerCategoriesMap(versions);
+        verify(billerMapper).mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockList);
+    }
+......................................................
+Successfully fetches biller categories from the repository:
+    @Test
+    public void fetches_biller_categories_successfully() {
+        List<Integer> versions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(versions)).thenReturn(mockList);
+        Map<Integer, List<BillerCategory>> result = codeUnderTest.fetchAndCacheBillerCategoriesMap(versions);
+        assertNotNull(result);
+    }
+......................................................
+Successfully fetches biller categories from the repository:
+    @Test
+    public void fetches_biller_categories_successfully() {
+        List<Integer> versions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(versions)).thenReturn(mockList);
+        Map<Integer, List<BillerCategory>> result = codeUnderTest.fetchAndCacheBillerCategoriesMap(versions);
+        assertNotNull(result);
+    }
+......................................................
+Handles empty or null input list of biller category versions:
+    @Test
+    public void test_handles_empty_or_null_input_list() {
+        // Prepare
+        List<Integer> emptyList = new ArrayList<>();
+        List<Integer> nullList = null;
+
+        // Execute
+        Map<Integer, List<BillerCategory>> resultEmpty = code_under_test.fetchAndCacheBillerCategoriesMap(emptyList);
+        Map<Integer, List<BillerCategory>> resultNull = code_under_test.fetchAndCacheBillerCategoriesMap(nullList);
+
+        // Verify
+        assertTrue(resultEmpty.isEmpty());
+        assertTrue(resultNull.isEmpty());
+    }
+......................................................
+Handles exceptions thrown by the repository when fetching data:
+    @Test
+    public void test_handles_exceptions_fetching_data() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions))
+                .thenThrow(new RuntimeException("Simulated Repository Exception"));
+
+        ProcessingException exception = assertThrows(ProcessingException.class, () -> {
+            code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+        });
+
+        assertEquals(ErrorConstants.Common.BILLER_CATEGORY_VERSION_MAPPING_DB_FETCH_ERROR, exception.getErrorCode());
+        assertTrue(exception.getMessage().contains("Error while fetching BillerCategoryVersionMapping data from DB"));
+    }
+......................................................
+Handles exceptions during the mapping of biller categories:
+    @Test
+    public void test_handles_exceptions_during_mapping_biller_categories() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions))
+                .thenThrow(new RuntimeException("Simulated DB Exception"));
+
+        // Verify and Assert
+        assertThrows(ProcessingException.class, () -> {
+            // Execute
+            code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+        });
+    }
+......................................................
+Handles null or empty results from the repository fetch:
+    @Test
+    public void test_handles_null_or_empty_results() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList)).thenReturn(mockBillerCategoriesList);
+
+        // Execute
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        assertTrue(result.isEmpty());
+        verify(wmClient, never()).set(anyString(), anyInt(), anyList());
+    }
+    @Test
+    public void test_handles_null_or_empty_results_exception() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenThrow(new RuntimeException("DB Connection Error"));
+
+        // Execute & Verify
+        assertThrows(ProcessingException.class, () -> code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions));
+    }
+......................................................
+Handles exceptions during the caching process:
+    @Test
+    public void test_handles_exceptions_during_caching_process() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions))
+                .thenReturn(mockBillerCategoryVersionMappingDOList);
+
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        BillerCategory mockBillerCategory = new BillerCategory();
+        mockBillerCategory.setId(UUID.randomUUID());
+        mockBillerCategory.setCategoryName("mock_category_name");
+        mockBillerCategory.setImageUrl("mock_image_url");
+        mockBillerCategory.setBillerCategoryVersion(1);
+        mockBillerCategoriesList.add(mockBillerCategory);
+
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList))
+                .thenReturn(mockBillerCategoriesList);
+
+        doThrow(new ProcessingException(ErrorConstants.Common.BILLER_CATEGORY_VERSION_MAPPING_DB_FETCH_ERROR, "Error while fetching BillerCategoryVersionMapping data from DB for billerCategoryVersions [1, 2, 3]", new Exception()))
+                .when(wmClient).set(anyString(), anyInt(), anyList());
+
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Verifies the cache key format for different biller category versions:
+    @Test
+    public void test_verify_cache_key_format() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> billerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mappingDO1 = new BillerCategoryVersionMappingDO();
+        mappingDO1.setBillerCategory(new BillerCategoryDO());
+        mappingDO1.setBillerCategoryVersion(1);
+        BillerCategoryVersionMappingDO mappingDO2 = new BillerCategoryVersionMappingDO();
+        mappingDO2.setBillerCategory(new BillerCategoryDO());
+        mappingDO2.setBillerCategoryVersion(2);
+        billerCategoryVersionMappingDOList.add(mappingDO1);
+        billerCategoryVersionMappingDOList.add(mappingDO2);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions))
+                .thenReturn(billerCategoryVersionMappingDOList);
+
+        List<BillerCategory> billerCategoriesList = new ArrayList<>();
+        BillerCategory billerCategory1 = new BillerCategory();
+        billerCategory1.setBillerCategoryVersion(1);
+        BillerCategory billerCategory2 = new BillerCategory();
+        billerCategory2.setBillerCategoryVersion(2);
+        billerCategoriesList.add(billerCategory1);
+        billerCategoriesList.add(billerCategory2);
+
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(billerCategoryVersionMappingDOList))
+                .thenReturn(billerCategoriesList);
+
+        // Execute
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey(1));
+        assertTrue(result.containsKey(2));
+
+        verify(wmClient, times(2)).set(anyString(), anyInt(), anyList());
+    }
+    @Test
+    public void test_verify_cache_key_format_exception() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions))
+                .thenThrow(new RuntimeException("DB connection error"));
+
+        // Execute and Verify
+        assertThrows(ProcessingException.class, () -> code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions));
+    }
+......................................................
+......................................................
+......................................................
+Validates that retryProcessorBillerIds are correctly populated:
+    @Test
+    public void test_reload_cache_for_biller_data_exception_handling() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+    
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDO.setProcessorBillerId("123");
+        billerDOs.add(billerDO);
+    
+        when(billerRepository.getBillersInfo(anyList(), anyBoolean())).thenReturn(billerDOs);
+    
+        List<OperationFuture> billerDataFutureList = new ArrayList<>();
+        OperationFuture<Boolean> operationFuture = new OperationFuture<>();
+        operationFuture.set(new OperationStatus(true, StatusCode.SUCCESS));
+        billerDataFutureList.add(operationFuture);
+    
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(operationFuture);
+    
+        // Execute
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+    
+        // Verify
+        assertTrue(retryProcessorBillerIds.isEmpty());
+    }
+......................................................
+Handles exceptions when fetching biller data from the database:
+    @Test
+    public void test_handles_exceptions_fetching_biller_data() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+    
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDO.setProcessorBillerId("123");
+        billerDOs.add(billerDO);
+    
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+    
+        doThrow(new RuntimeException("Database connection error")).when(wmClient).delete(anyString());
+    
+        // Execute
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+    
+        // Verify
+        assertTrue(retryProcessorBillerIds.contains("123"));
+        verify(wmClient, times(1)).delete(anyString());
+    }
+......................................................
+Handles empty set of processor biller IDs gracefully:
+    @Test
+    public void test_handles_empty_set_of_processor_biller_ids_gracefully() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+
+        // Act
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        // Assert
+        assertTrue(retryProcessorBillerIds.isEmpty());
+    }
+......................................................
+Successfully reloads cache for biller data when all biller IDs are valid:
+    @Test
+    public void test_reload_cache_for_valid_biller_ids() {
+        Set<String> processorBillerIds = new HashSet<>(Arrays.asList("123", "456"));
+        List<BillerDO> billerDOs = Arrays.asList(new BillerDO(), new BillerDO());
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(mock(OperationFuture.class));
+        Set<String> result = codeUnderTest.reloadCacheForBillerData(processorBillerIds);
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Handles concurrent modifications to biller data during cache reload:
+    @Test
+    public void test_handles_concurrent_modifications_during_cache_reload() {
+        // Prepare test data
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        processorBillerIds.add("456");
+
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setProcessorBillerId("123");
+        billerDO1.setMaxUpdateTimestamp(LocalDateTime.now());
+    
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setProcessorBillerId("456");
+        billerDO2.setMaxUpdateTimestamp(LocalDateTime.now());
+
+        List<BillerDO> billerDOs = new ArrayList<>();
+        billerDOs.add(billerDO1);
+        billerDOs.add(billerDO2);
+
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(new OperationFuture<>());
+
+        // Perform the cache reload
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        // Verify the retry processor biller ids
+        assertTrue(retryProcessorBillerIds.isEmpty());
+    
+        // Verify interactions
+        verify(billerRepository, times(1)).getBillersInfo(anyList(), eq(true));
+        verify(wmClient, times(4)).set(anyString(), anyInt(), any());
+        verify(wmClient, times(2)).delete(anyString());
+    }
+......................................................
+Handles cache operation failures and retries appropriately:
+    @Test
+    public void test_handles_cache_operation_failures_and_retries_appropriately() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDO.setProcessorBillerId("123");
+        billerDOs.add(billerDO);
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+        when(wmClient.set(anyString(), anyInt(), any(Biller.class))).thenReturn(new OperationFuture<>());
+        when(wmClient.delete(anyString())).thenReturn(new OperationFuture<>());
+
+        // Execute
+        Set<String> result = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        // Verify
+        assertTrue(result.isEmpty());
+        verify(billerRepository, times(1)).getBillersInfo(anyList(), eq(true));
+        verify(wmClient, times(2)).set(anyString(), anyInt(), any(Biller.class));
+        verify(wmClient, times(2)).delete(anyString());
+    }
+......................................................
+Correctly identifies and processes parent and child billers:
+    @Test
+    public void test_identify_and_process_parent_child_billers() {
+        Set<String> processorBillerIds = new HashSet<>(Arrays.asList("123"));
+        BillerDO parentBiller = new BillerDO();
+        BillerDO childBiller = new BillerDO();
+        childBiller.setParentBiller(parentBiller);
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(Collections.singletonList(childBiller));
+        when(BillPayUtil.isBillerHavingProducts(any())).thenReturn(false);
+        when(BillPayUtil.isBillerAProduct(any())).thenReturn(true);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(mock(OperationFuture.class));
+        Set<String> result = codeUnderTest.reloadCacheForBillerData(processorBillerIds);
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Adds billers to cache when they are valid and do not have products:
+    @Test
+    public void test_add_valid_billers_to_cache() {
+        Set<String> processorBillerIds = new HashSet<>(Arrays.asList("123"));
+        BillerDO billerDO = new BillerDO();
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(Collections.singletonList(billerDO));
+        when(BillPayUtil.isBillerHavingProducts(any())).thenReturn(false);
+        when(BillPayUtil.isBillerAProduct(any())).thenReturn(false);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(mock(OperationFuture.class));
+        Set<String> result = codeUnderTest.reloadCacheForBillerData(processorBillerIds);
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Deals with exceptions thrown by billerRepository.getBillersInfo:
+    @Test
+    public void test_reload_cache_for_biller_data_handles_exceptions() {
+        Reloadcacheforbillerdata reloadcacheforbillerdata = new Reloadcacheforbillerdata();
+        Set<String> processorBillerIds = new HashSet<>(Arrays.asList("1", "2", "3"));
+    
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenThrow(new RuntimeException("Database connection error"));
+    
+        assertThrows(ProcessingException.class, () -> {
+            reloadcacheforbillerdata.reloadCacheForBillerData(processorBillerIds);
+        });
+    }
+......................................................
+Handles billers with disabled parentBiller appropriately:
+    @Test
+    public void test_handles_disabled_parent_biller_appropriately() {
+        // Initialize necessary objects
+    
+        // Define the input data
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        processorBillerIds.add("456");
+    
+        // Define the expected output
+        Set<String> expectedRetryProcessorBillerIds = new HashSet<>();
+    
+        // Mock the behavior of billerRepository.getBillersInfo()
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenThrow(new RuntimeException("Database connection error"));
+    
+        // Call the method under test
+        Set<String> actualRetryProcessorBillerIds = reloadCacheForBillerData(processorBillerIds);
+    
+        // Verify the result
+        assertEquals(expectedRetryProcessorBillerIds, actualRetryProcessorBillerIds);
+    
+        // Additional verifications or assertions can be added as needed
+    }
+......................................................
+Confirms that billers with products are not added to cache:
+    @Test
+    public void test_billers_with_products_not_added_to_cache() {
+        ReloadcacheforbillerdataTest reloadCacheForBillerDataTest = new ReloadcacheforbillerdataTest();
+        Set<String> processorBillerIds = new HashSet<>(Arrays.asList("123", "456"));
+    
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenThrow(new RuntimeException("DB connection error"));
+    
+        try {
+            reloadCacheForBillerDataTest.reloadCacheForBillerData(processorBillerIds);
+        } catch (ProcessingException e) {
+            assertEquals(ErrorConstants.ReloadCacheForBillerData.BILLER_DB_FETCH_ERROR, e.getMessage());
+        }
+    }
+......................................................
