@@ -1,0 +1,594 @@
+Ensures that the log messages are correctly formatted and informative:
+ @Test
+    public void test_log_messages_formatting() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_CATEGORIES_MAP_CACHE_KEY + 1), eq(0), anyList());
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey(1));
+        assertEquals(1, result.get(1).size());
+
+        // Verify log message
+        ArgumentCaptor<String> logCaptor = ArgumentCaptor.forClass(String.class);
+        verify(log, times(1)).info(logCaptor.capture());
+        assertTrue(logCaptor.getValue().contains("Added key -"));
+        assertTrue(logCaptor.getValue().contains("with val -"));
+        assertTrue(logCaptor.getValue().contains("status -"));
+    }
+.............................................................
+Verifies that the cache expiration time is set correctly:
+    @Test
+    public void test_cache_expiration_time_set_correctly() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        BillerCategory mockBillerCategory = new BillerCategory();
+        mockBillerCategory.setId(UUID.randomUUID());
+        mockBillerCategory.setCategoryName("Mock Category");
+        mockBillerCategory.setImageUrl("mock_image_url");
+        mockBillerCategory.setBillerCategoryVersion(1);
+        mockBillerCategoriesList.add(mockBillerCategory);
+
+        Map<Integer, List<BillerCategory>> expectedMap = new HashMap<>();
+        expectedMap.put(1, Collections.singletonList(mockBillerCategory));
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList)).thenReturn(mockBillerCategoriesList);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(new OperationFuture<>());
+
+        // Execute
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        assertEquals(expectedMap, result);
+        verify(wmClient, times(1)).set(anyString(), anyInt(), any());
+    }
+.............................................................
+Verifies that the cache expiration time is set correctly:
+    @Test
+    public void test_cache_expiration_time_set_correctly() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        BillerCategory mockBillerCategory = new BillerCategory();
+        mockBillerCategory.setId(UUID.randomUUID());
+        mockBillerCategory.setCategoryName("Mock Category");
+        mockBillerCategory.setImageUrl("mock_image_url");
+        mockBillerCategory.setBillerCategoryVersion(1);
+        mockBillerCategoriesList.add(mockBillerCategory);
+
+        Map<Integer, List<BillerCategory>> expectedMap = new HashMap<>();
+        expectedMap.put(1, Collections.singletonList(mockBillerCategory));
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList)).thenReturn(mockBillerCategoriesList);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(new OperationFuture<>());
+
+        // Execute
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        assertEquals(expectedMap, result);
+        verify(wmClient, times(1)).set(anyString(), anyInt(), any());
+    }
+.............................................................
+Returns a map of biller category versions to their respective biller categories:
+    @Test
+    public void test_fetch_and_cache_biller_categories_map() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        BillerCategory mockBillerCategory = new BillerCategory();
+        mockBillerCategory.setId(UUID.randomUUID());
+        mockBillerCategory.setCategoryName("Mock Category");
+        mockBillerCategory.setImageUrl("mock_image_url");
+        mockBillerCategory.setBillerCategoryVersion(1);
+        mockBillerCategoriesList.add(mockBillerCategory);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList)).thenReturn(mockBillerCategoriesList);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(new OperationFuture<Boolean>());
+
+        // Execute
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey(1));
+        assertEquals(1, result.get(1).size());
+        assertEquals("Mock Category", result.get(1).get(0).getCategoryName());
+    
+        // Verify interactions
+        verify(billerCategoryVersionMappingRepository, times(1)).getBillerCategoriesWithBillers(billerCategoryVersions);
+        verify(billerMapper, times(1)).mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList);
+        verify(wmClient, times(1)).set(anyString(), anyInt(), any());
+    }
+.............................................................
+Caches the mapped biller categories with correct cache keys:
+    @Test
+    public void test_caches_mapped_biller_categories_with_correct_cache_keys() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        BillerCategory mockBillerCategory = new BillerCategory();
+        mockBillerCategory.setId(UUID.randomUUID());
+        mockBillerCategory.setCategoryName("Mock Category");
+        mockBillerCategory.setImageUrl("mock_image_url");
+        mockBillerCategory.setBillerCategoryVersion(1);
+        mockBillerCategoriesList.add(mockBillerCategory);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList)).thenReturn(mockBillerCategoriesList);
+
+        // Execute
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        // Verify
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey(1));
+        assertEquals(1, result.get(1).size());
+
+        // Verify cache key and value
+        String expectedCacheKey = WPSConstants.Biller.BILLER_CATEGORIES_MAP_CACHE_KEY + 1;
+        verify(wmClient).set(eq(expectedCacheKey), eq(0), eq(mockBillerCategoriesList));
+    }
+    @Test
+    public void test_caches_mapped_biller_categories_with_correct_cache_keys_exception() {
+        // Prepare
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+    
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenThrow(new RuntimeException("DB Connection Error"));
+
+        // Execute and Verify
+        assertThrows(ProcessingException.class, () -> code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions));
+    }
+.............................................................
+Logs successful cache operations with correct details:
+    @Test
+    public void logs_successful_cache_operations() {
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<BillerCategoryVersionMappingDO> mockBillerCategoryVersionMappingDOList = new ArrayList<>();
+        BillerCategoryVersionMappingDO mockBillerCategoryVersionMappingDO = new BillerCategoryVersionMappingDO();
+        mockBillerCategoryVersionMappingDO.setCategoryVersionId(UUID.randomUUID());
+        mockBillerCategoryVersionMappingDO.setBillerCategory(new BillerCategoryDO());
+        mockBillerCategoryVersionMappingDO.setImageUrl("mock_image_url");
+        mockBillerCategoryVersionMappingDO.setBillerCategoryVersion(1);
+        mockBillerCategoryVersionMappingDO.setCategoryOrder(1);
+        mockBillerCategoryVersionMappingDO.setEnabled(true);
+        mockBillerCategoryVersionMappingDOList.add(mockBillerCategoryVersionMappingDO);
+
+        when(billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers(billerCategoryVersions)).thenReturn(mockBillerCategoryVersionMappingDOList);
+
+        List<BillerCategory> mockBillerCategoriesList = new ArrayList<>();
+        BillerCategory mockBillerCategory = new BillerCategory();
+        mockBillerCategory.setId(UUID.randomUUID());
+        mockBillerCategory.setCategoryName("mock_category");
+        mockBillerCategory.setImageUrl("mock_image_url");
+        mockBillerCategory.setBillerCategoryVersion(1);
+        mockBillerCategoriesList.add(mockBillerCategory);
+
+        when(billerMapper.mapBillerCategoryVersionMappingsDOsToBillerCategoryList(mockBillerCategoryVersionMappingDOList)).thenReturn(mockBillerCategoriesList);
+
+        Map<Integer, List<BillerCategory>> expectedMap = new HashMap<>();
+        expectedMap.put(1, mockBillerCategoriesList);
+
+        OperationFuture<Boolean> operationFuture = new OperationFuture<>();
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(operationFuture);
+
+        Map<Integer, List<BillerCategory>> result = code_under_test.fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+
+        verify(wmClient, times(1)).set(anyString(), anyInt(), any());
+        assertEquals(expectedMap, result);
+    }
+.............................................................
+.............................................................
+.............................................................
+Successfully fetches all enabled BillerSearchDO from the repository:
+    @Test
+    public void fetches_all_enabled_biller_search_do() {
+        BillerSearchRepository mockRepository = mock(BillerSearchRepository.class);
+        BillerCoreService service = new BillerCoreService();
+        service.billerSearchRepository = mockRepository;
+        when(mockRepository.getAllEnabledBillerSearchDO()).thenReturn(new ArrayList<>());
+        service.fetchAndCacheBillerIncorrectSearchKeywordMap();
+        verify(mockRepository, times(1)).getAllEnabledBillerSearchDO();
+    }
+.............................................................
+Correctly maps BillerSearchDO to a HashMap with incorrect keywords as keys:
+    @Test
+    public void maps_biller_search_do_to_hashmap() {
+        BillerSearchRepository mockRepository = mock(BillerSearchRepository.class);
+        BillerCoreService service = new BillerCoreService();
+        service.billerSearchRepository = mockRepository;
+        List<BillerSearchDO> billerSearchDOList = new ArrayList<>();
+        BillerSearchDO billerSearchDO = new BillerSearchDO();
+        billerSearchDO.setIncorrectKeyword("incorrect");
+        billerSearchDOList.add(billerSearchDO);
+        when(mockRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchDOList);
+        HashMap<String, List<String>> result = service.fetchAndCacheBillerIncorrectSearchKeywordMap();
+        assertTrue(result.containsKey("incorrect"));
+    }
+.............................................................
+Successfully caches the mapped BillerIncorrectSearchKeywords:
+    @Test
+    public void caches_mapped_biller_incorrect_search_keywords() {
+        WmClient mockClient = mock(WmClient.class);
+        BillerCoreService service = new BillerCoreService();
+        service.wmClient = mockClient;
+        HashMap<String, List<String>> map = new HashMap<>();
+        map.put("incorrect", new ArrayList<>());
+        OperationFuture<Boolean> future = mock(OperationFuture.class);
+        when(mockClient.set(anyString(), anyInt(), any())).thenReturn(future);
+        service.fetchAndCacheBillerIncorrectSearchKeywordMap();
+        verify(mockClient, times(1)).set(anyString(), anyInt(), any());
+    }
+.............................................................
+Handles empty BillerSearchDO list gracefully:
+    @Test
+    public void test_handles_empty_biller_search_list_gracefully() {
+        // Prepare
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(Collections.emptyList());
+
+        // Act
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+.............................................................
+Returns the final mapped HashMap of incorrect keywords and biller names:
+    @Test
+    public void test_fetch_and_cache_biller_incorrect_search_keyword_map() {
+        // Prepare
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO1 = new BillerSearchDO();
+        billerSearchDO1.setIncorrectKeyword("incorrect_keyword_1");
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setEnabled(true);
+        billerDO1.setBillerName("biller_name_1");
+        billerSearchDO1.setBillers(Collections.singletonList(billerDO1));
+        billerSearchKeywords.add(billerSearchDO1);
+
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        expectedMap.put("incorrect_keyword_1", Collections.singletonList("biller_name_1"));
+
+        // Execute
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertEquals(expectedMap, result);
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), eq(0), eq(expectedMap));
+    }
+.............................................................
+BillerDO list within BillerSearchDO contains null values:
+    @Test
+    public void test_biller_search_with_null_values() {
+        // Prepare
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO1 = new BillerSearchDO();
+        billerSearchDO1.setIncorrectKeyword("keyword1");
+        List<BillerDO> billers1 = new ArrayList<>();
+        BillerDO biller1 = new BillerDO();
+        biller1.setBillerName("Biller1");
+        billers1.add(biller1);
+        billerSearchDO1.setBillers(billers1);
+        billerSearchKeywords.add(billerSearchDO1);
+
+        BillerSearchDO billerSearchDO2 = new BillerSearchDO();
+        billerSearchDO2.setIncorrectKeyword("keyword2");
+        List<BillerDO> billers2 = new ArrayList<>();
+        BillerDO biller2 = new BillerDO();
+        // Setting a null value in the list
+        billers2.add(null);
+        billerSearchDO2.setBillers(billers2);
+        billerSearchKeywords.add(billerSearchDO2);
+
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        // Act
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey("keyword1"));
+        assertEquals(1, result.get("keyword1").size());
+        assertEquals("Biller1", result.get("keyword1").get(0));
+    }
+.............................................................
+BillerSearchDO list contains null values:
+    @Test
+    public void test_fetch_and_cache_biller_incorrect_search_keyword_map() {
+        // Prepare
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO1 = new BillerSearchDO();
+        billerSearchDO1.setIncorrectKeyword("keyword1");
+        List<BillerDO> billers1 = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setBillerName("Biller1");
+        billerDO1.setEnabled(true);
+        billers1.add(billerDO1);
+        billerSearchDO1.setBillers(billers1);
+        billerSearchKeywords.add(billerSearchDO1);
+
+        BillerSearchDO billerSearchDO2 = new BillerSearchDO();
+        billerSearchDO2.setIncorrectKeyword("keyword2");
+        List<BillerDO> billers2 = new ArrayList<>();
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setBillerName("Biller2");
+        billerDO2.setEnabled(false); // Simulating a disabled biller
+        billers2.add(billerDO2);
+        billerSearchDO2.setBillers(billers2);
+        billerSearchKeywords.add(billerSearchDO2);
+
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        // Execute
+        HashMap<String, List<String>> result = billerCoreService.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey("keyword1"));
+        assertTrue(result.containsValue(Collections.singletonList("Biller1")));
+    }
+    @Test
+    public void test_fetch_and_cache_biller_incorrect_search_keyword_map_exception_handling() {
+        // Prepare
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenThrow(new RuntimeException("DB connection error"));
+
+        // Execute and Verify
+        assertThrows(ProcessingException.class, () -> {
+            billerCoreService.fetchAndCacheBillerIncorrectSearchKeywordMap();
+        });
+    }
+.............................................................
+wmClient fails to cache the mapped data:
+    @Test
+    public void wmclient_fails_to_cache_mapped_data() {
+        // Prepare test data
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO = new BillerSearchDO();
+        billerSearchDO.setIncorrectKeyword("incorrect_keyword");
+        List<BillerDO> billers = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDO.setEnabled(true);
+        billerDO.setBillerName("biller_name");
+        billers.add(billerDO);
+        billerSearchDO.setBillers(billers);
+        billerSearchKeywords.add(billerSearchDO);
+
+        // Stubbing the repository method
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        // Stubbing the wmClient set method
+        OperationFuture<Boolean> operationFuture = mock(OperationFuture.class);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(operationFuture);
+
+        // Perform the method call
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify the interactions
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), eq(0), any());
+
+        // Assertions
+        assertNotNull(result);
+        assertEquals(1, result.size());
+        assertTrue(result.containsKey("incorrect_keyword"));
+        assertEquals(1, result.get("incorrect_keyword").size());
+        assertEquals("biller_name", result.get("incorrect_keyword").get(0));
+    }
+    @Test
+    public void wmclient_fails_to_cache_mapped_data_exception_handling() {
+        // Stubbing the repository method to throw an exception
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenThrow(new RuntimeException("DB connection error"));
+
+        // Perform the method call
+        assertThrows(ProcessingException.class, () -> code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap());
+    }
+.............................................................
+Ensures no null values are present in the final mapped HashMap:
+    @Test
+    public void test_fetch_and_cache_biller_incorrect_search_keyword_map() {
+        // Prepare
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO1 = new BillerSearchDO();
+        billerSearchDO1.setIncorrectKeyword("keyword1");
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setEnabled(true);
+        billerDO1.setBillerName("Biller1");
+        List<BillerDO> billersList1 = new ArrayList<>();
+        billersList1.add(billerDO1);
+        billerSearchDO1.setBillers(billersList1);
+        billerSearchKeywords.add(billerSearchDO1);
+
+        BillerSearchDO billerSearchDO2 = new BillerSearchDO();
+        billerSearchDO2.setIncorrectKeyword("keyword2");
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setEnabled(true);
+        billerDO2.setBillerName("Biller2");
+        List<BillerDO> billersList2 = new ArrayList<>();
+        billersList2.add(billerDO2);
+        billerSearchDO2.setBillers(billersList2);
+        billerSearchKeywords.add(billerSearchDO2);
+
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        // Execute
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertNotNull(result);
+        assertFalse(result.containsValue(null));
+    }
+.............................................................
+Validates that the cache key is correctly formatted:
+    @Test
+    public void test_fetch_and_cache_biller_incorrect_search_keyword_map() {
+        // Setup
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO = new BillerSearchDO();
+        billerSearchDO.setIncorrectKeyword("incorrect_keyword");
+        List<BillerDO> billersDOList = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDO.setEnabled(true);
+        billerDO.setBillerName("biller_name");
+        billersDOList.add(billerDO);
+        billerSearchDO.setBillers(billersDOList);
+        billerSearchKeywords.add(billerSearchDO);
+
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        HashMap<String, List<String>> expectedMap = new HashMap<>();
+        List<String> expectedList = new ArrayList<>();
+        expectedList.add("biller_name");
+        expectedMap.put("incorrect_keyword", expectedList);
+
+        // Execute
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertEquals(expectedMap, result);
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), eq(0), eq(expectedMap));
+    }
+.............................................................
+Checks if duplicate incorrect keywords are handled correctly:
+    @Test
+    public void test_fetch_and_cache_biller_incorrect_search_keyword_map() {
+        // Prepare
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO1 = new BillerSearchDO();
+        billerSearchDO1.setIncorrectKeyword("keyword1");
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setBillerName("Biller1");
+        billerDO1.setEnabled(true);
+        billerSearchDO1.setBillers(Collections.singletonList(billerDO1));
+        billerSearchKeywords.add(billerSearchDO1);
+
+        BillerSearchDO billerSearchDO2 = new BillerSearchDO();
+        billerSearchDO2.setIncorrectKeyword("keyword2");
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setBillerName("Biller2");
+        billerDO2.setEnabled(true);
+        billerSearchDO2.setBillers(Collections.singletonList(billerDO2));
+        billerSearchKeywords.add(billerSearchDO2);
+
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        // Execute
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey("keyword1"));
+        assertTrue(result.containsKey("keyword2"));
+        assertEquals(1, result.get("keyword1").size());
+        assertEquals(1, result.get("keyword2").size());
+        assertEquals("Biller1", result.get("keyword1").get(0));
+        assertEquals("Biller2", result.get("keyword2").get(0));
+
+        // Verify interactions
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), eq(0), any(HashMap.class));
+    }
+.............................................................
+Confirms that the method handles large datasets efficiently:
+    @Test
+    public void test_fetch_and_cache_biller_incorrect_search_keyword_map() {
+        // Prepare
+        List<BillerSearchDO> billerSearchKeywords = new ArrayList<>();
+        BillerSearchDO billerSearchDO1 = new BillerSearchDO();
+        billerSearchDO1.setIncorrectKeyword("keyword1");
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setEnabled(true);
+        billerDO1.setBillerName("Biller1");
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setEnabled(false);
+        billerDO2.setBillerName("Biller2");
+        billerSearchDO1.setBillers(Arrays.asList(billerDO1, billerDO2));
+        BillerSearchDO billerSearchDO2 = new BillerSearchDO();
+        billerSearchDO2.setIncorrectKeyword("keyword2");
+        BillerDO billerDO3 = new BillerDO();
+        billerDO3.setEnabled(true);
+        billerDO3.setBillerName("Biller3");
+        billerSearchDO2.setBillers(Collections.singletonList(billerDO3));
+        billerSearchKeywords.add(billerSearchDO1);
+        billerSearchKeywords.add(billerSearchDO2);
+
+        when(billerSearchRepository.getAllEnabledBillerSearchDO()).thenReturn(billerSearchKeywords);
+
+        // Execute
+        HashMap<String, List<String>> result = code_under_test.fetchAndCacheBillerIncorrectSearchKeywordMap();
+
+        // Verify
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey("keyword1"));
+        assertTrue(result.containsKey("keyword2"));
+        assertEquals(1, result.get("keyword1").size());
+        assertEquals("Biller1", result.get("keyword1").get(0));
+        assertEquals(1, result.get("keyword2").size());
+        assertEquals("Biller3", result.get("keyword2").get(0));
+
+        // Verify cache operation
+        verify(wmClient, times(1)).set(eq(WPSConstants.Biller.BILLER_INCORRECT_SEARCH_KEYWORDS_MAP_CACHE_KEY), eq(0), any(HashMap.class));
+    }
+.............................................................
+.............................................................
