@@ -1,0 +1,331 @@
+The getAllPromotionsForPromotionCategory method retrieves all promotions for given biller categories and processor biller IDs. It validates the input, fetches biller categories, retrieves promotions from a campaign service, and processes the promotions to create a map of biller IDs to their respective promotions.
+Example Usage
+BillerPromotionCoreService service = new BillerPromotionCoreService();
+Map<String, List<BillerPromotion>> promotions = service.getAllPromotionsForPromotionCategory("category1,category2", "biller1,biller2", 1);
+Code Analysis
+Inputs
+billerCategoryIds: A comma-separated string of biller category IDs.
+processorBillerIds: A comma-separated string of processor biller IDs.
+billerCategoryVersion: An integer representing the version of the biller category.
+ 
+Flow
+Validate the input parameters.
+Fetch the list of biller categories for the given version.
+Retrieve all promotions from the campaign service.
+Process promotions for the provided biller category IDs.
+Process promotions for the provided processor biller IDs.
+Return the map of biller IDs to their respective promotions.
+ 
+Outputs
+A map where the keys are biller IDs and the values are lists of BillerPromotion objects.
+
+...........
+The processPromotionsForBillerCategoryIds method processes promotions for given biller category IDs. It validates the IDs, retrieves the corresponding biller categories, and then maps the promotions for each biller within those categories.
+Example Usage
+BillerPromotionCoreService service = new BillerPromotionCoreService();
+Map<String, List<BillerPromotion>> promotionsMap = new HashMap<>();
+service.processPromotionsForBillerCategoryIds("category-id-1,category-id-2", billerCategoriesList, promotionMapFromCaas, promotionsMap);
+Code Analysis
+Inputs
+billerCategoryIds: A comma-separated string of biller category IDs.
+billerCategoriesList: A list of BillerCategory objects.
+promotionMapFromCaas: A map containing promotion responses from CAAS.
+promotionsMap: A map to store the resulting BillerPromotion objects.
+ 
+Flow
+Check if billerCategoryIds is not null.
+Validate and convert billerCategoryIds to a list of UUIDs.
+For each UUID, find the corresponding BillerCategory from billerCategoriesList.
+If a valid BillerCategory is found, retrieve its billers and process promotions for each biller.
+If no valid BillerCategory is found, throw a BusinessValidationException.
+ 
+Outputs
+The method updates the promotionsMap with the processed BillerPromotion objects for each biller.
+ ....................
+The processPromotionsForBillerIds method processes promotions for a list of biller IDs. It splits the input string of biller IDs, iterates over each ID, and calls the createPromotionsResponse method to populate the promotions map.
+Example Usage
+BillerPromotionCoreService service = new BillerPromotionCoreService();
+Map<String, List<PromotionsMappingResponse>> promotionMapFromCaas = new HashMap<>();
+Map<String, List<BillerPromotion>> promotionsMap = new HashMap<>();
+service.processPromotionsForBillerIds("billerId1,billerId2", promotionMapFromCaas, promotionsMap);
+Code Analysis
+Inputs
+processorBillerIds: A comma-separated string of biller IDs.
+promotionMapFromCaas: A map containing promotion responses from CAAS.
+promotionsMap: A map to be populated with biller promotions.
+ 
+Flow
+Check if processorBillerIds is not null.
+Split processorBillerIds into an array of individual biller IDs.
+Iterate over each biller ID.
+Call createPromotionsResponse for each biller ID to populate the promotionsMap.
+ 
+Outputs
+The promotionsMap is populated with promotions for each biller ID.
+.................
+The validatePromotionsRequest method checks if both billerCategoryIds and processorBillerIds are null. If they are, it throws a DataValidationException with a specific error code.
+Example Usage
+BillerPromotionCoreService service = new BillerPromotionCoreService();
+service.validatePromotionsRequest(null, null); // This will throw DataValidationException
+Code Analysis
+Inputs
+billerCategoryIds: A string representing biller category IDs.
+processorBillerIds: A string representing processor biller IDs.
+ 
+Flow
+The method checks if both billerCategoryIds and processorBillerIds are null.
+If both are null, it throws a DataValidationException with the error code ErrorConstants.Promotions.BILLER_ID_NULL.
+ 
+Outputs
+Throws DataValidationException if both inputs are null.
+...............
+The validateBillerCategoryIds method takes a comma-separated string of biller category IDs, validates each ID to ensure it is a valid UUID, and returns a list of valid UUIDs. If any ID is invalid, it throws a ProcessingException.
+Example Usage
+BillerPromotionCoreService service = new BillerPromotionCoreService();
+List<UUID> validIds = service.validateBillerCategoryIds("123e4567-e89b-12d3-a456-426614174000,123e4567-e89b-12d3-a456-426614174001");
+// validIds will contain two UUID objects
+Code Analysis
+Inputs
+billerCategoryIds: A comma-separated string of biller category IDs.
+ 
+Flow
+Split the input string by commas to get individual biller category IDs.
+Initialize an empty list to store validated UUIDs.
+Iterate over each biller category ID.
+Attempt to convert each ID to a UUID.
+If successful, add the UUID to the list.
+If conversion fails, throw a ProcessingException with an appropriate error message.
+Return the list of validated UUIDs.
+ 
+Outputs
+A list of valid UUIDs.
+Throws ProcessingException if any ID is not a valid UUID.
+ ........................
+The createPromotionsResponse method processes promotion data for a given billerId by mapping responses from a source map to a list of BillerPromotion objects, sorting them by start date, and storing the top promotion in a destination map.
+Example Usage
+Map<String, List<PromotionsMappingResponse>> promotionMapFromCaas = new HashMap<>();
+Map<String, List<BillerPromotion>> promotionsMap = new HashMap<>();
+String billerId = "some-biller-id";
+
+BillerPromotionCoreService service = new BillerPromotionCoreService();
+service.createPromotionsResponse(promotionMapFromCaas, promotionsMap, billerId);
+Code Analysis
+Inputs
+promotionMapFromCaas: A map containing promotion responses keyed by billerId.
+promotionsMap: A map to store the processed BillerPromotion objects.
+billerId: A string representing the identifier of the biller.
+ 
+Flow
+Retrieve the list of promotion responses for the given billerId from promotionMapFromCaas.
+Map these responses to a list of BillerPromotion objects.
+If the list is not empty, sort it by the start date.
+Store the top promotion in the promotionsMap under the given billerId.
+ 
+Outputs
+The promotionsMap is updated with the top BillerPromotion for the given billerId, if any promotions exist.
+
+
+...................................
+===============================
+...............................
+This method initializes the service by reloading the cache for biller category data using the versions specified in the configuration.
+Example Usage
+@PostConstruct
+public void init() {
+    billerCoreService.reloadCacheForBillerCategoryData(walletPaymentServiceConfiguration.getBillerCategoryVersions());
+}
+Code Analysis
+Inputs
+walletPaymentServiceConfiguration: Configuration object providing biller category versions.
+billerCoreService: Service responsible for handling core biller operations.
+ 
+Flow
+The method retrieves the list of biller category versions from the configuration.
+It then calls the reloadCacheForBillerCategoryData method on the billerCoreService with the retrieved versions.
+ 
+Outputs
+The cache for biller category data is reloaded with the specified versions.
+........................
+The getBillerCategories method retrieves biller categories for a given version by calling another method that fetches the data from a cache.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+int version = 1;
+BillerCategoriesResponse response = billerService.getBillerCategories(version);
+// Use the response object as needed
+Code Analysis
+Inputs
+billerCategoryVersion: an integer representing the version of the biller categories to be retrieved.
+ 
+Flow
+The method getBillerCategories is called with an integer parameter billerCategoryVersion.
+It delegates the task to getBillerCategoriesMapFromCache method, passing the same parameter.
+The getBillerCategoriesMapFromCache method fetches the biller categories from the cache.
+ 
+Outputs
+Returns a BillerCategoriesResponse object containing the biller categories for the specified version.
+ ..................................
+This method retrieves a list of biller categories and their last updated timestamp from the cache. If the list is not empty, it maps the categories to DTOs and returns them along with the timestamp. If the list is empty, it returns an empty list of categories.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+int version = 1;
+BillerCategoriesResponse response = billerService.getBillerCategoriesMapFromCache(version);
+System.out.println(response.getCategories());
+Code Analysis
+Inputs
+int billerCategoryVersion: The version of the biller category data to retrieve.
+ 
+Flow
+Retrieve the list of biller categories for the given version.
+Fetch the last updated timestamp for the biller category data.
+If the list of biller categories is not empty, map the categories to DTOs and return them along with the timestamp.
+If the list is empty, return an empty list of categories.
+ 
+Outputs
+BillerCategoriesResponse: An object containing the list of biller categories and the last updated timestamp.
+...............................
+This method retrieves a list of popular billers, maps them to DTOs, and returns them in a response object.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+PopularBillersResponse response = billerService.getPopularBillers();
+System.out.println(response.getBillers());
+Code Analysis
+Inputs
+None
+ 
+Flow
+Calls billerCoreService.getPopularBillers() to fetch a list of popular billers.
+Maps the list of billers to a list of GetPopularBillersBillerDTO using billerDTOMapper.
+Constructs and returns a PopularBillersResponse object containing the mapped DTO list.
+ 
+Outputs
+Returns a PopularBillersResponse object containing a list of popular billers in DTO format.
+ ..........................
+Summary
+The getBillerById method retrieves a Biller object using its UUID and processorBillerId, then prepares and returns a BillerByIdResponse object containing the biller data.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+UUID billerId = UUID.randomUUID();
+String processorBillerId = "processor123";
+try {
+    BillerByIdResponse response = billerService.getBillerById(billerId, processorBillerId);
+    System.out.println(response);
+} catch (ApplicationException e) {
+    e.printStackTrace();
+}
+Code Analysis
+Inputs
+UUID billerId: The unique identifier of the biller.
+String processorBillerId: The processor-specific identifier of the biller.
+ 
+Flow
+Calls billerCoreService.fetchAndCacheBillerData with billerId and processorBillerId to retrieve the Biller object.
+Passes the retrieved Biller object to prepareBillerDataResponse.
+Returns the BillerByIdResponse object prepared by prepareBillerDataResponse.
+ 
+Outputs
+Returns a BillerByIdResponse object containing the biller information.
+................
+The prepareBillerDataResponse method constructs a BillerByIdResponse object from a given Biller object. It maps the Biller to BillerInformation and a list of BillerByIdDTO objects, then builds and returns a BillerByIdResponse containing these mapped objects and the last update timestamp.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+Biller biller = new Biller();
+// Initialize biller with necessary data
+BillerByIdResponse response = billerService.prepareBillerDataResponse(biller);
+Code Analysis
+Inputs
+Biller biller: The Biller object containing the biller data to be mapped and included in the response.
+ 
+Flow
+Map the Biller object to a BillerInformation object using billerDTOMapper.
+Check if the Biller has sub-billers.
+If sub-billers exist, map them to a list of BillerByIdDTO objects; otherwise, map the single Biller to a list.
+Build and return a BillerByIdResponse object containing the mapped BillerInformation, list of BillerByIdDTO objects, and the last update timestamp.
+ 
+Outputs
+BillerByIdResponse: An object containing the mapped biller information, a list of biller DTOs, and the last update timestamp.
+.............................
+The getBillerDataUpdateInfo method retrieves and compiles various timestamps and update information related to biller data, then returns this information encapsulated in a BillerDataUpdateInfoResponse object.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+BillerDataUpdateInfoRequest request = new BillerDataUpdateInfoRequest(Set.of("processorBillerId1", "processorBillerId2"));
+BillerDataUpdateInfoResponse response = billerService.getBillerDataUpdateInfo(request);
+Code Analysis
+Inputs
+BillerDataUpdateInfoRequest object containing a set of processor biller IDs.
+ 
+Flow
+Extracts processor biller IDs from the request.
+Fetches the last updated timestamps for biller category data and incorrect search keywords.
+Retrieves the last updated timestamps for the specified processor biller IDs.
+Maps the retrieved timestamps to BillerPlanDetailUpdateInfo objects.
+Constructs and returns a BillerDataUpdateInfoResponse object containing all the gathered information.
+ 
+Outputs
+A BillerDataUpdateInfoResponse object containing the last updated timestamps for biller category data, incorrect search keywords, and detailed update information for the specified processor biller IDs.
+...................................
+The reloadCacheForBillerData method in the BillerServiceImpl class reloads various caches based on the provided request. It handles reloading of biller category data, incorrect search keywords data, and specific biller data.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+BillerDataCacheReloadRequest request = new BillerDataCacheReloadRequest();
+request.setBillerCategoryDataReloadRequired(true);
+request.setBillerIncorrectSearchKeywordsCacheUpdateRequired(true);
+request.setProcessorBillerIds(Set.of("processorBillerId1", "processorBillerId2"));
+
+BillerDataCacheAlterResponse response = billerService.reloadCacheForBillerData(request);
+System.out.println(response.getProcessorBillerIdsToRetry());
+Code Analysis
+Inputs
+BillerDataCacheReloadRequest object containing flags and IDs for cache reloading.
+ 
+Flow
+Check if biller category data reload is required and reload it if true.
+Check if incorrect search keywords cache update is required and reload it if true.
+Reload cache for specific biller data if processor biller IDs are provided.
+Return a response containing any processor biller IDs that need to be retried.
+ 
+Outputs
+BillerDataCacheAlterResponse object containing a set of processor biller IDs that need to be retried.
+.....................
+The evictCacheForBillerData method evicts cache entries for specific billers based on the provided request. It can either evict cache for all billers or a subset of billers specified in the request.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+BillerDataCacheEvictRequest request = new BillerDataCacheEvictRequest();
+request.setProcessorBillerIds(Set.of("billerId1", "billerId2"));
+request.setEvictCacheForAllBillers(false);
+BillerDataCacheAlterResponse response = billerService.evictCacheForBillerData(request);
+System.out.println(response.getProcessorBillerIdsToRetry());
+Code Analysis
+Inputs
+BillerDataCacheEvictRequest billerDataCacheEvictRequest: Contains the IDs of billers whose cache should be evicted and a flag indicating if all biller caches should be evicted.
+ 
+Flow
+Initialize a list of processorBillerIdsToEvict from the request.
+If the request indicates to evict cache for all billers, fetch all cached biller IDs.
+Initialize a set retryProcessorBillerIds to track billers whose cache eviction needs to be retried.
+If there are biller IDs to evict, call billerCoreService.evictCacheForBillerAndUpdateTimestampData to perform the eviction.
+Return a BillerDataCacheAlterResponse containing the IDs of billers that need a retry.
+ 
+Outputs
+BillerDataCacheAlterResponse: Contains a set of processor biller IDs that need to be retried for cache eviction.
+ ......................................
+This method retrieves and returns the incorrect search keywords for billers along with the last updated timestamp. If no keywords are found, it returns an empty map.
+Example Usage
+BillerServiceImpl billerService = new BillerServiceImpl();
+try {
+    BillerIncorrectSearchKeywordsResponse response = billerService.getBillerIncorrectSearchKeywords();
+    System.out.println(response.getBillerIncorrectSearchKeywords());
+} catch (ApplicationException e) {
+    e.printStackTrace();
+}
+Code Analysis
+Inputs
+None
+ 
+Flow
+Fetch the incorrect search keywords map from billerCoreService.
+Fetch the last updated timestamp for the incorrect search keywords.
+If the map is not empty, build and return a BillerIncorrectSearchKeywordsResponse with the map and timestamp.
+If the map is empty, return a BillerIncorrectSearchKeywordsResponse with an empty map.
+ 
+Outputs
+A BillerIncorrectSearchKeywordsResponse object containing the incorrect search keywords map and the last updated timestamp.

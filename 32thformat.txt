@@ -1,0 +1,505 @@
+Method handles exceptions thrown by fetchAndCacheBillerCategoryDataUpdatedAtTimestamp:
+    @Test
+    public void test_method_handles_exceptions_for_fetch_and_cache_biller_category_data_updated_at_timestamp() {
+        // Initialize the class object
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+
+        // Prepare test data
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+
+        // Call the method and assert exception handling
+        assertDoesNotThrow(() -> reloadCache.reloadCacheForBillerCategoryData(billerCategoryVersions));
+    }
+.......................................................
+Method ensures cache is updated even if the list is empty:
+ @Test
+    public void test_reload_cache_for_biller_category_data_empty_list() {
+        // Initialize the class object
+        BillerCoreService billerCoreService = new BillerCoreService();
+
+        // Define test input
+        List<Integer> emptyBillerCategoryVersions = new ArrayList<>();
+
+        // Call the method
+        billerCoreService.reloadCacheForBillerCategoryData(emptyBillerCategoryVersions);
+
+        // Add assertions or verifications here
+    }
+.......................................................
+Method handles exceptions thrown by fetchAndCacheBillerCategoriesMap:
+    @Test
+    public void test_method_handles_exceptions_for_fetch_and_cache_biller_categories_map() {
+        Reloadcacheforbillercategorydata reloadcacheforbillercategorydata = new Reloadcacheforbillercategorydata();
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+    
+        doThrow(new RuntimeException("Error fetching and caching biller categories map")).when(reloadcacheforbillercategorydata).fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+    
+        assertDoesNotThrow(() -> reloadcacheforbillercategorydata.reloadCacheForBillerCategoryData(billerCategoryVersions));
+    }
+.......................................................
+Method does not modify the input list of biller category versions:
+    @Test
+    public void test_does_not_modify_input_list() {
+        // Initialize the class object
+        BillerCoreService billerCoreService = new BillerCoreService();
+
+        // Prepare input data
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+
+        // Create a copy of the original list
+        List<Integer> originalList = new ArrayList<>(billerCategoryVersions);
+
+        // Call the method under test
+        billerCoreService.reloadCacheForBillerCategoryData(billerCategoryVersions);
+
+        // Check if the original list is unchanged
+        assertEquals(originalList, billerCategoryVersions);
+    }
+.......................................................
+Method handles a list with a large number of biller category versions:
+    @Test
+    public void test_reload_cache_for_large_number_of_biller_category_versions() {
+        // Prepare
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+
+        // Define input
+        List<Integer> billerCategoryVersions = new ArrayList<>();
+        // Add a large number of biller category versions to the list
+
+        // Verify and Assert
+        assertDoesNotThrow(() -> {
+            reloadCache.reloadCacheForBillerCategoryData(billerCategoryVersions);
+        });
+    }
+.......................................................
+Method handles a list with invalid biller category versions:
+    @Test
+    public void test_reload_cache_for_invalid_biller_category_versions() {
+        // Prepare
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+    
+        // Define invalid biller category versions
+        List<Integer> invalidBillerCategoryVersions = Arrays.asList(-1, 0, 1000);
+    
+        // Test and Verify
+        assertThrows(Exception.class, () -> reloadCache.reloadCacheForBillerCategoryData(invalidBillerCategoryVersions));
+    }
+.......................................................
+Method handles a list with a single biller category version:
+    @Test
+    public void test_reload_cache_for_single_biller_category_version() {
+        // Initialize
+        Reloadcacheforbillercategorydata reloadCacheForBillerCategoryData = new Reloadcacheforbillercategorydata();
+
+        // Define input
+        List<Integer> billerCategoryVersions = Collections.singletonList(1);
+
+        // Perform the method call
+        try {
+            reloadCacheForBillerCategoryData.reloadCacheForBillerCategoryData(billerCategoryVersions);
+        } catch (Exception e) {
+            fail("Exception thrown: " + e.getMessage());
+        }
+
+        // Add assertions if needed
+    }
+.......................................................
+Method does not modify the input list billerCategoryVersions:
+    @Test
+    public void test_does_not_modify_input_list() {
+        // Initialize the class object
+        BillerCoreService billerCoreService = new BillerCoreService();
+
+        // Prepare input data
+        List<Integer> billerCategoryVersions = new ArrayList<>();
+        billerCategoryVersions.add(1);
+        billerCategoryVersions.add(2);
+
+        // Create a copy of the original list
+        List<Integer> originalList = new ArrayList<>(billerCategoryVersions);
+
+        // Call the method under test
+        billerCoreService.reloadCacheForBillerCategoryData(billerCategoryVersions);
+
+        // Check if the original list is not modified
+        assertEquals(originalList, billerCategoryVersions);
+    }
+.......................................................
+Method handles exceptions thrown by fetchAndCacheBillerCategoryDataUpdatedAtTimestamp:
+    @Test
+    public void test_method_handles_exceptions_for_fetch_and_cache_biller_category_data_updated_at_timestamp() {
+        // Initialize the class object
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+
+        // Mocking the behavior of fetchAndCacheBillerCategoriesMap
+        when(reloadCache.fetchAndCacheBillerCategoriesMap(anyList())).thenThrow(new RuntimeException("Error fetching and caching biller categories map"));
+
+        // Mocking the behavior of fetchAndCacheBillerCategoryDataUpdatedAtTimestamp
+        doThrow(new RuntimeException("Error fetching and caching biller category data updated at timestamp")).when(reloadCache).fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+
+        // Call the method under test
+        reloadCache.reloadCacheForBillerCategoryData(Arrays.asList(1, 2, 3));
+
+        // Verify that exceptions are handled
+        verify(reloadCache, times(1)).fetchAndCacheBillerCategoriesMap(anyList());
+        verify(reloadCache, times(1)).fetchAndCacheBillerCategoryDataUpdatedAtTimestamp();
+    }
+.......................................................
+Method handles list with duplicate values in billerCategoryVersions:
+    @Test
+    public void method_handles_list_with_duplicate_values() {
+        // Initialize
+        Reloadcacheforbillercategorydata reloadCache = new Reloadcacheforbillercategorydata();
+
+        // Prepare input
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3, 3, 4);
+
+        // Verify behavior
+        assertDoesNotThrow(() -> {
+            reloadCache.reloadCacheForBillerCategoryData(billerCategoryVersions);
+        });
+    }
+.......................................................
+Method handles exceptions thrown by fetchAndCacheBillerCategoriesMap:
+    @Test
+    public void test_method_handles_exceptions_for_fetch_and_cache_biller_categories_map() {
+        Reloadcacheforbillercategorydata reloadcacheforbillercategorydata = new Reloadcacheforbillercategorydata();
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+    
+        doThrow(new RuntimeException("Error fetching and caching biller categories map")).when(reloadcacheforbillercategorydata).fetchAndCacheBillerCategoriesMap(billerCategoryVersions);
+    
+        assertDoesNotThrow(() -> reloadcacheforbillercategorydata.reloadCacheForBillerCategoryData(billerCategoryVersions));
+    }
+.......................................................
+Method handles large list input for billerCategoryVersions efficiently:
+ @Test
+    public void test_reload_cache_for_large_list_input() {
+        // Prepare
+        ReloadcacheforbillercategorydataTest reloadCacheTest = new ReloadcacheforbillercategorydataTest();
+
+        // Define input
+        List<Integer> billerCategoryVersions = new ArrayList<>();
+        // Add a large list of billerCategoryVersions
+        for (int i = 0; i < 1000; i++) {
+            billerCategoryVersions.add(i);
+        }
+
+        // Test
+        reloadCacheTest.reloadCacheForBillerCategoryData(billerCategoryVersions);
+
+        // Assertions can be added if needed
+    }
+.......................................................
+Method calls fetchAndCacheBillerCategoryDataUpdatedAtTimestamp without errors:
+    @Test
+    public void test_reload_cache_for_biller_category_data() {
+        // Initialize
+        ReloadcacheforbillercategorydataTest reloadcacheforbillercategorydataTest = new ReloadcacheforbillercategorydataTest();
+
+        // Define input
+        List<Integer> billerCategoryVersions = Arrays.asList(1, 2, 3);
+
+        // Test
+        assertDoesNotThrow(() -> {
+            reloadcacheforbillercategorydataTest.reloadCacheForBillerCategoryData(billerCategoryVersions);
+        });
+    }
+.......................................................
+.......................................................
+.......................................................
+Checks for proper logging of error messages:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        ReloadincorrectsearchdataincacheTest reloadTest = new ReloadincorrectsearchdataincacheTest();
+    
+        // Mocking the behavior of fetchAndCacheBillerIncorrectSearchKeywordMap() to throw an exception
+        Mockito.doThrow(new RuntimeException("Error fetching incorrect search keyword map"))
+               .when(reloadTest).fetchAndCacheBillerIncorrectSearchKeywordMap();
+    
+        // Mocking the behavior of fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp() to throw an exception
+        Mockito.doThrow(new RuntimeException("Error fetching incorrect search data update timestamp"))
+               .when(reloadTest).fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp();
+    
+        // Calling the method under test
+        reloadTest.reloadIncorrectSearchDataInCache();
+    
+        // Verifying if the error messages are logged properly
+        Mockito.verify(reloadTest, times(1)).fetchAndCacheBillerIncorrectSearchKeywordMap();
+        Mockito.verify(reloadTest, times(1)).fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp();
+    }
+.......................................................
+Validates the integrity of the cached data:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        // Initialize BillerCoreService object
+        BillerCoreService billerCoreService = new BillerCoreService();
+
+        // Test reloading incorrect search data in cache
+        assertDoesNotThrow(() -> {
+            billerCoreService.reloadIncorrectSearchDataInCache();
+        });
+    }
+.......................................................
+Ensures that fetched data is not null before caching:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        // Initialize BillerCoreService object
+        BillerCoreService billerCoreService = new BillerCoreService();
+
+        // Test fetching and caching biller incorrect search keyword map
+        try {
+            billerCoreService.reloadIncorrectSearchDataInCache();
+        } catch (Exception e) {
+            fail("Exception thrown while reloading incorrect search data in cache: " + e.getMessage());
+        }
+    }
+.......................................................
+Verifies that cache keys are correctly formatted:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        // Prepare
+        ReloadincorrectsearchdataincacheTest reloadTest = new ReloadincorrectsearchdataincacheTest();
+
+        // Test
+        assertDoesNotThrow(() -> {
+            reloadTest.reloadIncorrectSearchDataInCache();
+        });
+    }
+.......................................................
+Biller incorrect search data update timestamp is null:
+    @Test
+    public void test_reload_incorrect_search_data_in_cache() {
+        // Initialize BillerCoreService object
+        BillerCoreService billerCoreService = new BillerCoreService();
+
+        // Test behavior when fetching and caching biller incorrect search keyword map
+        try {
+            billerCoreService.reloadIncorrectSearchDataInCache();
+        } catch (Exception e) {
+            fail("Exception thrown while reloading incorrect search data in cache: " + e.getMessage());
+        }
+    }
+.......................................................
+Database fetch operation fails due to database unavailability:
+    @Test
+    public void test_database_fetch_fails_due_to_unavailability() {
+        BillerCoreService service = new BillerCoreService();
+        // Mock database unavailability and verify handling
+        service.reloadIncorrectSearchDataInCache();
+        // Add assertions to verify handling of database unavailability
+    }
+.......................................................
+.......................................................
+.......................................................
+@Test
+    public void test_successfully_caches_biller_data_and_timestamps() {
+        BillerCoreService service = new BillerCoreService();
+        List<BillerDO> billersToCache = List.of(new BillerDO());
+        Biller biller = new Biller();
+        biller.setMaxUpdateTimestamp(LocalDateTime.now());
+        when(service.prepareBillerFromDO(any(BillerDO.class))).thenReturn(biller);
+        when(service.wmClient.set(anyString(), anyInt(), any())).thenReturn(mock(OperationFuture.class));
+        Set<String> result = service.reloadCacheForBillerAndUpdateTimestampData(billersToCache);
+        assertTrue(result.isEmpty());
+    }
+.......................................................
+    @Test
+    public void test_reload_cache_for_biller_and_update_timestamp_data() {
+        // Initialize necessary objects
+        Reloadcacheforbillerandupdatetimestampdata reloadCache = new Reloadcacheforbillerandupdatetimestampdata();
+        Set<String> retryProcessorBillerIds = new HashSet<>();
+        List<OperationFuture> billerDataFutureList = new ArrayList<>();
+        List<OperationFuture> billerDataUpdatedAtTimestampFutureList = new ArrayList<>();
+    
+        // Mocking the behavior of prepareBillerFromDO method
+        when(reloadCache.prepareBillerFromDO(any(BillerDO.class))).thenReturn(new Biller());
+    
+        // Mocking the behavior of wmClient.set method
+        when(wmClient.set(anyString(), anyInt(), any(Biller.class))).thenReturn(mock(OperationFuture.class));
+    
+        // Call the method under test
+        retryProcessorBillerIds.addAll(reloadCache.reloadCacheForBillerAndUpdateTimestampData(new ArrayList<>()));
+
+        // Assertions or verifications
+        verify(reloadCache, times(billersToCache.size())).prepareBillerFromDO(any(BillerDO.class));
+        verify(wmClient, times(billersToCache.size())).set(anyString(), anyInt(), any(Biller.class));
+    }
+.......................................................
+    @Test
+    public void test_reload_cache_for_biller_and_update_timestamp_data_unique_processor_biller_ids() {
+        // Initialize the necessary objects
+        Reloadcacheforbillerandupdatetimestampdata reloadCache = new Reloadcacheforbillerandupdatetimestampdata();
+        Set<String> uniqueProcessorBillerIds = reloadCache.reloadCacheForBillerAndUpdateTimestampData(billersToCache);
+
+        // Check if the uniqueProcessorBillerIds set contains only unique values
+        Set<String> duplicateProcessorBillerIds = new HashSet<>();
+        Set<String> nonDuplicateProcessorBillerIds = new HashSet<>();
+        for (String processorBillerId : uniqueProcessorBillerIds) {
+            if (!nonDuplicateProcessorBillerIds.add(processorBillerId)) {
+                duplicateProcessorBillerIds.add(processorBillerId);
+            }
+        }
+
+        // Assert that there are no duplicate processorBillerIds in the set
+        assertTrue("Retry processorBillerIds set contains duplicate processorBillerIds", duplicateProcessorBillerIds.isEmpty());
+    }
+.......................................................
+.......................................................
+.......................................................
+    @Test
+    public void test_map_biller_version_to_biller_categories() {
+        // Prepare
+        BillerCategory billerCategory1 = new BillerCategory(UUID.randomUUID(), "Category1", "image1.jpg", 1, true, false, new ArrayList<>());
+        BillerCategory billerCategory2 = new BillerCategory(UUID.randomUUID(), "Category2", "image2.jpg", 2, false, true, new ArrayList<>());
+        List<BillerCategory> billerCategories = List.of(billerCategory1, billerCategory2);
+    
+        // Execute
+        Map<Integer, List<BillerCategory>> result = mapBillerVersionToBillerCategories(billerCategories);
+    
+        // Verify
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey(1));
+        assertTrue(result.containsKey(2));
+        assertEquals(1, result.get(1).size());
+        assertEquals(1, result.get(2).size());
+        assertEquals(billerCategory1, result.get(1).get(0));
+        assertEquals(billerCategory2, result.get(2).get(0));
+    }
+    @Test
+    public void test_map_biller_version_to_biller_categories_exception() {
+        // Prepare
+        List<BillerCategory> billerCategories = null;
+    
+        // Execute & Verify
+        assertThrows(NullPointerException.class, () -> mapBillerVersionToBillerCategories(billerCategories));
+    }
+.......................................................
+    @Test
+    public void test_map_contains_unique_version_keys() {
+        // Prepare
+        BillerCategory billerCategory1 = new BillerCategory();
+        billerCategory1.setBillerCategoryVersion(1);
+    
+        BillerCategory billerCategory2 = new BillerCategory();
+        billerCategory2.setBillerCategoryVersion(2);
+    
+        BillerCategory billerCategory3 = new BillerCategory();
+        billerCategory3.setBillerCategoryVersion(1);
+    
+        List<BillerCategory> billerCategories = List.of(billerCategory1, billerCategory2, billerCategory3);
+    
+        // Execute
+        Map<Integer, List<BillerCategory>> result = mapBillerVersionToBillerCategories(billerCategories);
+    
+        // Verify
+        assertEquals(2, result.size());
+    }
+.......................................................
+    @Test
+    public void test_handles_large_lists_efficiently() {
+        // Prepare
+        BillerCategory billerCategory1 = new BillerCategory(UUID.randomUUID(), "Category1", "image1.jpg", 1, true, false, new ArrayList<>());
+        BillerCategory billerCategory2 = new BillerCategory(UUID.randomUUID(), "Category2", "image2.jpg", 2, false, true, new ArrayList<>());
+        List<BillerCategory> billerCategories = List.of(billerCategory1, billerCategory2);
+    
+        // Execute
+        Map<Integer, List<BillerCategory>> result = mapBillerVersionToBillerCategories(billerCategories);
+    
+        // Verify
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey(1));
+        assertTrue(result.containsKey(2));
+        assertEquals(1, result.get(1).size());
+        assertEquals(1, result.get(2).size());
+        assertEquals(billerCategory1, result.get(1).get(0));
+        assertEquals(billerCategory2, result.get(2).get(0));
+    }
+.......................................................
+    @Test
+    public void test_maintains_order_within_version_list() {
+        BillerCoreService service = new BillerCoreService();
+        List<BillerCategory> billerCategories = List.of(
+            BillerCategory.builder().billerCategoryVersion(1).categoryName("First").build(),
+            BillerCategory.builder().billerCategoryVersion(1).categoryName("Second").build()
+        );
+        Map<Integer, List<BillerCategory>> result = service.mapBillerVersionToBillerCategories(billerCategories);
+        assertEquals("First", result.get(1).get(0).getCategoryName());
+        assertEquals("Second", result.get(1).get(1).getCategoryName());
+    }
+.......................................................
+    @Test
+    public void test_mixed_valid_and_null_billers() {
+        BillerCoreService service = new BillerCoreService();
+        List<BillerCategory> billerCategories = Arrays.asList(
+            null,
+            BillerCategory.builder().billerCategoryVersion(1).categoryName("Valid").build(),
+            null,
+            BillerCategory.builder().billerCategoryVersion(2).categoryName("Valid2").build()
+        );
+        Map<Integer, List<BillerCategory>> result = service.mapBillerVersionToBillerCategories(billerCategories);
+        assertEquals(2, result.size());
+        assertEquals("Valid", result.get(1).get(0).getCategoryName());
+        assertEquals("Valid2", result.get(2).get(0).getCategoryName());
+    }
+.......................................................
+    @Test
+    public void test_duplicate_biller_categories() {
+        BillerCoreService service = new BillerCoreService();
+        BillerCategory category = BillerCategory.builder().billerCategoryVersion(1).categoryName("Duplicate").build();
+        List<BillerCategory> billerCategories = Arrays.asList(category, category);
+        Map<Integer, List<BillerCategory>> result = service.mapBillerVersionToBillerCategories(billerCategories);
+        assertEquals(1, result.size());
+        assertEquals(2, result.get(1).size());
+    }
+.......................................................
+    @Test
+    public void test_negative_or_zero_versions() {
+        BillerCoreService service = new BillerCoreService();
+        List<BillerCategory> billerCategories = List.of(
+            BillerCategory.builder().billerCategoryVersion(-1).categoryName("NegativeVersion").build(),
+            BillerCategory.builder().billerCategoryVersion(0).categoryName("ZeroVersion").build()
+        );
+        Map<Integer, List<BillerCategory>> result = service.mapBillerVersionToBillerCategories(billerCategories);
+        assertEquals(2, result.size());
+        assertEquals("NegativeVersion", result.get(-1).get(0).getCategoryName());
+        assertEquals("ZeroVersion", result.get(0).get(0).getCategoryName());
+    }
+.......................................................
+    @Test
+    public void test_list_with_null_elements() {
+        BillerCoreService service = new BillerCoreService();
+        List<BillerCategory> billerCategories = Arrays.asList(
+            BillerCategory.builder().billerCategoryVersion(1).categoryName("Category1").build(),
+            null,
+            BillerCategory.builder().billerCategoryVersion(2).categoryName("Category2").build()
+        );
+        Map<Integer, List<BillerCategory>> result = service.mapBillerVersionToBillerCategories(billerCategories);
+        assertEquals(2, result.size());
+        assertEquals("Category1", result.get(1).get(0).getCategoryName());
+        assertEquals("Category2", result.get(2).get(0).getCategoryName());
+    }
+.......................................................
+    @Test
+    public void test_single_biller_category() {
+        BillerCoreService service = new BillerCoreService();
+        List<BillerCategory> billerCategories = List.of(
+            BillerCategory.builder().billerCategoryVersion(1).categoryName("Category1").build()
+        );
+        Map<Integer, List<BillerCategory>> result = service.mapBillerVersionToBillerCategories(billerCategories);
+        assertEquals(1, result.size());
+        assertEquals("Category1", result.get(1).get(0).getCategoryName());
+    }
+.......................................................
+    @Test
+    public void test_correct_mapping_of_biller_categories() {
+        BillerCoreService service = new BillerCoreService();
+        List<BillerCategory> billerCategories = List.of(
+            BillerCategory.builder().billerCategoryVersion(1).categoryName("Category1").build(),
+            BillerCategory.builder().billerCategoryVersion(2).categoryName("Category2").build()
+        );
+        Map<Integer, List<BillerCategory>> result = service.mapBillerVersionToBillerCategories(billerCategories);
+        assertEquals(2, result.size());
+        assertEquals("Category1", result.get(1).get(0).getCategoryName());
+        assertEquals("Category2", result.get(2).get(0).getCategoryName());
+    }
+.......................................................
