@@ -1,0 +1,184 @@
+Verify that the map returned contains correct timestamps for all billers:
+    @Test
+    public void verify_correct_timestamps_for_all_billers() {
+        // Prepare
+        Fetchbillerdatalastupdatedatmapfromdb fetcher = new Fetchbillerdatalastupdatedatmapfromdb();
+    
+        // Define input data
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorBillerIds = Arrays.asList("12345", "67890");
+    
+        // Define expected output
+        Map<String, Object> expectedMap = new HashMap<>();
+    
+        // Define mock behavior for billerRepository
+        when(billerRepository.getBillersInfo(billerIds, false)).thenReturn(Arrays.asList(
+            new BillerDO(UUID.randomUUID(), "Biller1", LocalDateTime.now()),
+            new BillerDO(UUID.randomUUID(), "Biller2", LocalDateTime.now())
+        ));
+    
+        // Define behavior for wmClient.set
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(new OperationFuture<>());
+    
+        // Execute the method
+        Map<String, Object> result = fetcher.fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+    
+        // Verify the result
+        assertEquals(expectedMap, result);
+    }
+......................................................
+Ensure cache keys are unique and correctly formatted:
+    @Test
+    public void test_ensure_cache_keys_unique_and_correctly_formatted() {
+        // Prepare test data
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorBillerIds = Arrays.asList("12345", "67890");
+
+        // Mocking behavior
+        when(billerRepository.getBillersInfo(eq(billerIds), anyBoolean())).thenReturn(Arrays.asList(
+                new BillerDO(UUID.randomUUID(), "Test Biller 1", "12345"),
+                new BillerDO(UUID.randomUUID(), "Test Biller 2", "67890")
+        ));
+
+        // Call the method
+        Map<String, Object> result = fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+
+        // Assertions
+        assertNotNull(result);
+        assertEquals(2, result.size());
+        assertTrue(result.containsKey("12345_WPS_BILLER_DATA_UPDATED_AT"));
+        assertTrue(result.containsKey("67890_WPS_BILLER_DATA_UPDATED_AT"));
+    }
+......................................................
+Log info messages when cache operations are successful:
+    @Test
+    public void test_log_info_messages_on_cache_operations_success() {
+        // Prepare test data
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorBillerIds = Arrays.asList("12345", "67890");
+
+        // Mock the behavior of billerRepository
+        when(billerRepository.getBillersInfo(billerIds, false)).thenReturn(Arrays.asList(new BillerDO(), new BillerDO()));
+        when(billerRepository.getBillersInfo(processorBillerIds, false)).thenReturn(Arrays.asList(new BillerDO(), new BillerDO()));
+
+        // Call the method under test
+        Map<String, Object> result = fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+
+        // Verify the log.info messages
+        verify(log, times(4)).info(anyString(), anyString(), any());
+
+        // Additional verifications or assertions can be added as needed
+    }
+......................................................
+Handle cache operation failures gracefully:
+    @Test
+    public void test_handle_cache_operation_failures_gracefully() {
+        // Prepare
+        Fetchbillerdatalastupdatedatmapfromdb fetchBillerData = new Fetchbillerdatalastupdatedatmapfromdb();
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorBillerIds = Arrays.asList("12345", "67890");
+
+        // Define behavior
+        when(billerRepository.getBillersInfo(billerIds, false)).thenThrow(new RuntimeException("Database connection error"));
+
+        // Verify and Assert
+        assertThrows(ProcessingException.class, () -> {
+            fetchBillerData.fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+        });
+    }
+......................................................
+Handle empty biller data objects returned from DB:
+    @Test
+    public void test_handle_empty_biller_data_objects() {
+        // Prepare
+        Fetchbillerdatalastupdatedatmapfromdb fetchBillerData = new Fetchbillerdatalastupdatedatmapfromdb();
+        List<UUID> billerIds = new ArrayList<>();
+        List<String> processorBillerIds = new ArrayList<>();
+    
+        // Act
+        Map<String, Object> result = fetchBillerData.fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+    
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Handle null biller data objects returned from DB:
+    @Test
+    public void test_handle_null_biller_data_objects() {
+        // Prepare
+        Fetchbillerdatalastupdatedatmapfromdb fetchBillerData = new Fetchbillerdatalastupdatedatmapfromdb();
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorBillerIds = Arrays.asList("12345", "67890");
+
+        // Set up mock behavior
+        when(billerRepository.getBillersInfo(billerIds, false)).thenReturn(null);
+
+        // Execute
+        Map<String, Object> result = fetchBillerData.fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+
+        // Verify
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Handle exceptions when fetching biller data from DB using processorBillerIds:
+    @Test
+    public void test_handle_exceptions_fetching_biller_data_from_db() {
+        // Prepare test data
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorBillerIds = Arrays.asList("12345", "67890");
+
+        // Mocking behavior
+        when(billerRepository.getBillersInfo(billerIds, false)).thenThrow(new RuntimeException("Database connection error"));
+
+        // Perform the test
+        Map<String, Object> result = fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+
+        // Verify the result
+        assertTrue(result.isEmpty());
+    }
+......................................................
+Handle exceptions when fetching biller data from DB using billerIds:
+    @Test
+    public void test_handle_exceptions_fetching_biller_data_from_db() {
+        // Prepare
+        Fetchbillerdatalastupdatedatmapfromdb fetcher = new Fetchbillerdatalastupdatedatmapfromdb();
+    
+        // Define input
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorBillerIds = Arrays.asList("12345", "67890");
+    
+        // Mock behavior
+        when(billerRepository.getBillersInfo(billerIds, false)).thenThrow(new RuntimeException("Database connection error"));
+    
+        // Verify exception handling
+        assertThrows(ProcessingException.class, () -> {
+            // Act
+            fetcher.fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+        });
+    }
+......................................................
+Return map of biller data last updated timestamps:
+    @Test
+    public void test_return_map_of_biller_data_last_updated_timestamps() {
+        BillerCoreService service = new BillerCoreService();
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID());
+        List<String> processorBillerIds = Collections.emptyList();
+        Map<String, Object> result = service.fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+        assertNotNull(result);
+        assertFalse(result.isEmpty());
+    }
+......................................................
+Compute max updated timestamp for each biller:
+    @Test
+    public void test_compute_max_updated_timestamp_for_each_biller() {
+        BillerCoreService service = new BillerCoreService();
+        List<UUID> billerIds = Arrays.asList(UUID.randomUUID());
+        List<String> processorBillerIds = Collections.emptyList();
+        Map<String, Object> result = service.fetchBillerDataLastUpdatedAtMapFromDB(billerIds, processorBillerIds);
+        assertTrue(result.values().stream().allMatch(value -> value instanceof LocalDateTime));
+    }
+ assertTrue(result.keySet().stream().allMatch(key -> key.endsWith(WPSConstants.Biller.SUFFIX_BILLER_DATA_UPDATED_AT)));
+ verify(wmClient, times(result.size())).set(anyString(), eq(0), any(LocalDateTime.class));
+......................................................
