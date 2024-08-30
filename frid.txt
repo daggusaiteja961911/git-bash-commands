@@ -1,0 +1,320 @@
+Handles concurrent modifications to the cache gracefully:
+    @Test
+    public void test_handles_concurrent_modifications_to_cache_gracefully() {
+        // Create a mock for billerRepository
+        BillerRepository billerRepository = mock(BillerRepository.class);
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(Arrays.asList(
+            new BillerDO(UUID.randomUUID(), BigDecimal.TEN, BigDecimal.ONE, true, BigDecimal.ZERO, "Test Biller", "Test Processor", "12345",
+                    "Test Bill Type", "Test Biller Type", true, false, 24, "123456", 1, "http://redeem.com", "T&C", "Info", new byte[0],
+                    InputType.ALPHANUMERIC, "Placeholder", null, Collections.emptyList(), Collections.emptyList(), "5%", "Product Display Name",
+                    "Country", "Currency", "Disclaimer", "Redeem Instructions", "10%", 2, true, "Image URL", "Display Name", "Tags", true, true, 1,
+                    "1000", true, Collections.emptyList(), Collections.emptyList())),
+            new BillerDO(UUID.randomUUID(), BigDecimal.TEN, BigDecimal.ONE, true, BigDecimal.ZERO, "Test Sub Biller", "Test Processor", "54321",
+                    "Test Bill Type", "Test Biller Type", true, false, 24, "543210", 2, "http://redeem.com/sub", "T&C Sub", "Info Sub", new byte[0],
+                    InputType.ALPHANUMERIC, "Placeholder Sub", null, Collections.emptyList(), Collections.emptyList(), "5%", "Product Display Name Sub",
+                    "Country Sub", "Currency Sub", "Disclaimer Sub", "Redeem Instructions Sub", "10%", 2, true, "Image URL Sub", "Display Name Sub",
+                    "Tags Sub", true, true, 1, "1000 Sub", true, Collections.emptyList(), Collections.emptyList())
+        );
+
+        // Create a mock for wmClient
+        WmClient wmClient = mock(WmClient.class);
+        when(wmClient.delete(anyString())).thenReturn(new OperationFuture<>());
+
+        // Create an instance of the class under test
+        CodeUnderTest code_under_test = new CodeUnderTest(billerRepository, wmClient);
+
+        // Call the method under test
+        Set<String> processorBillerIds = new HashSet<>(Arrays.asList("12345", "54321"));
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        // Verify the behavior
+        assertTrue(retryProcessorBillerIds.isEmpty());
+        verify(wmClient, times(2)).delete(anyString());
+    }
+    }
+.................................................................
+Processes billers with disabled parent billers appropriately:
+    @Test
+    public void test_reload_cache_for_biller_data_with_disabled_parent_billers() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        processorBillerIds.add("456");
+    
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setProcessorBillerId("123");
+        billerDO1.setEnabled(true);
+        BillerDO parentBiller = new BillerDO();
+        parentBiller.setEnabled(false);
+        billerDO1.setParentBiller(parentBiller);
+        billerDOs.add(billerDO1);
+    
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+    
+        // Act
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+    
+        // Verify
+        verify(billerRepository).getBillersInfo(processorBillerIds, true);
+        verify(wmClient, times(2)).delete(anyString());
+        assertEquals(1, retryProcessorBillerIds.size());
+        assertTrue(retryProcessorBillerIds.contains("123"));
+    }
+    @Test
+    public void test_reload_cache_for_biller_data_with_disabled_parent_billers_eviction() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        processorBillerIds.add("456");
+    
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setProcessorBillerId("123");
+        billerDO1.setEnabled(true);
+        BillerDO parentBiller = new BillerDO();
+        parentBiller.setEnabled(false);
+        billerDO1.setParentBiller(parentBiller);
+        billerDOs.add(billerDO1);
+    
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+    
+        // Act
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+    
+        // Verify
+        verify(billerRepository).getBillersInfo(processorBillerIds, true);
+        verify(wmClient, times(2)).delete(anyString());
+        assertEquals(1, retryProcessorBillerIds.size());
+        assertTrue(retryProcessorBillerIds.contains("123"));
+    }
+.................................................................
+Validates that the retry mechanism works for failed cache operations:
+    @Test
+    public void test_retry_mechanism_for_failed_cache_operations() {
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        processorBillerIds.add("456");
+
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setProcessorBillerId("123");
+        billerDO1.setBillerId(UUID.randomUUID());
+        billerDO1.setMaxUpdateTimestamp(LocalDateTime.now());
+        billerDOs.add(billerDO1);
+
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setProcessorBillerId("456");
+        billerDO2.setBillerId(UUID.randomUUID());
+        billerDO2.setMaxUpdateTimestamp(LocalDateTime.now());
+        billerDOs.add(billerDO2);
+
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+
+        List<OperationFuture> billerDataFutureList = new ArrayList<>();
+        OperationFuture<Boolean> successFuture = new OperationFuture<>();
+        successFuture.set(new OperationStatus(true, StatusCode.SUCCESS));
+        OperationFuture<Boolean> failureFuture = new OperationFuture<>();
+        failureFuture.set(new OperationStatus(false, StatusCode.ERR_INTERNAL));
+        billerDataFutureList.add(successFuture);
+        billerDataFutureList.add(failureFuture);
+
+        when(wmClient.set(anyString(), anyInt(), any(Biller.class))).thenReturn(successFuture);
+        when(wmClient.delete(anyString())).thenReturn(successFuture, failureFuture);
+
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        assertEquals(1, retryProcessorBillerIds.size());
+        assertTrue(retryProcessorBillerIds.contains("456"));
+    }
+.................................................................
+Confirms that the log messages are accurate and informative:
+    @Test
+    public void test_reload_cache_for_biller_data_logs() {
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("12345");
+        processorBillerIds.add("67890");
+
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setProcessorBillerId("12345");
+        billerDO1.setBillerId(UUID.randomUUID());
+        billerDO1.setProcessor("Processor1");
+        billerDOs.add(billerDO1);
+
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setProcessorBillerId("67890");
+        billerDO2.setBillerId(UUID.randomUUID());
+        billerDO2.setProcessor("Processor2");
+        billerDOs.add(billerDO2);
+
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        verify(billerRepository, times(1)).getBillersInfo(processorBillerIds, true);
+        verify(wmClient, times(2)).set(anyString(), anyInt(), any());
+
+        verify(wmClient, times(2)).delete(anyString());
+    }
+.................................................................
+Deals with cache operation failures and retries caching:
+    @Test
+    public void test_deals_with_cache_operation_failures_and_retries_caching() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO = new BillerDO();
+        billerDO.setProcessorBillerId("123");
+        billerDOs.add(billerDO);
+    
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+        when(billerDO.getParentBiller()).thenReturn(null);
+        when(billerDO.getEnabled()).thenReturn(false);
+        when(billerDO.getProcessorBillerId()).thenReturn("123");
+        when(billerDO.getMaxUpdateTimestamp()).thenReturn(LocalDateTime.now());
+    
+        // Act
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+    
+        // Verify
+        verify(wmClient, times(1)).set(anyString(), anyInt(), any(Biller.class));
+        verify(wmClient, times(1)).set(anyString(), anyInt(), any(LocalDateTime.class));
+        verify(wmClient, times(1)).delete(anyString());
+    
+        assertTrue(retryProcessorBillerIds.isEmpty());
+    }
+.................................................................
+Manages billers with products by skipping them from caching:
+    @Test
+    public void test_manage_billers_with_products_skip_caching() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        processorBillerIds.add("456");
+
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setProcessorBillerId("123");
+        billerDO1.setEnabled(true);
+        BillerDO billerDO2 = new BillerDO();
+        billerDO2.setProcessorBillerId("456");
+        billerDO2.setEnabled(false);
+        billerDOs.add(billerDO1);
+        billerDOs.add(billerDO2);
+
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+
+        List<BillerDO> billersToCache = new ArrayList<>();
+        BillerDO billerToCache = new BillerDO();
+        billerToCache.setProcessorBillerId("123");
+        billersToCache.add(billerToCache);
+
+        when(BillPayUtil.isBillerHavingProducts(any())).thenReturn(true);
+        when(BillPayUtil.isBillerAProduct(any())).thenReturn(false);
+
+        List<OperationFuture> billerDataFutureList = new ArrayList<>();
+        OperationFuture<Boolean> operationFuture = mock(OperationFuture.class);
+        when(operationFuture.getStatus()).thenReturn(new OperationStatus(true, StatusCode.SUCCESS, "Success"));
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(operationFuture);
+        billerDataFutureList.add(operationFuture);
+
+        when(BillPayUtil.filterBillersFailedToCache(eq(billerDataFutureList), eq(CacheAction.WRITE), eq(WPSConstants.Biller.SUFFIX_BILLER_DATA)))
+                .thenReturn(Collections.emptyList());
+
+        // Execute
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        // Verify
+        assertEquals(1, retryProcessorBillerIds.size());
+        assertTrue(retryProcessorBillerIds.contains("456"));
+    }
+.................................................................
+Logs information during cache eviction and reloading processes:
+    @Test
+    public void test_reload_cache_for_biller_data_logs_information() {
+        // Prepare
+        Set<String> processorBillerIds = new HashSet<>();
+        processorBillerIds.add("123");
+        processorBillerIds.add("456");
+
+        List<BillerDO> billerDOs = new ArrayList<>();
+        BillerDO billerDO1 = new BillerDO();
+        billerDO1.setProcessorBillerId("123");
+        billerDO1.setBillerId(UUID.randomUUID());
+        billerDO1.setMaxUpdateTimestamp(LocalDateTime.now());
+        billerDOs.add(billerDO1);
+
+        List<OperationFuture> operationFutures = new ArrayList<>();
+        OperationFuture<Boolean> operationFuture1 = new OperationFuture<>();
+        operationFuture1.set(new OperationStatus(true, StatusCode.SUCCESS, "Success"));
+        operationFutures.add(operationFuture1);
+
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(operationFuture1;
+
+        // Execute
+        Set<String> retryProcessorBillerIds = code_under_test.reloadCacheForBillerData(processorBillerIds);
+
+        // Verify
+        verify(billerRepository).getBillersInfo(processorBillerIds, true);
+        verify(wmClient, times(2)).set(anyString(), anyInt(), any());
+        verify(wmClient, times(2)).delete(anyString());
+
+        // Assertions
+        assertTrue(retryProcessorBillerIds.isEmpty());
+    }
+    }
+.................................................................
+Caches parent biller data if the biller has a disabled parent:
+    @Test
+    public void test_cache_parent_biller_if_disabled() {
+        BillerDO parentBiller = new BillerDO();
+        parentBiller.setEnabled(false);
+        BillerDO billerDO = new BillerDO();
+        billerDO.setParentBiller(parentBiller);
+        List<BillerDO> billerDOs = Arrays.asList(billerDO);
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(mock(OperationFuture.class));
+        codeUnderTest.reloadCacheForBillerData(new HashSet<>(Arrays.asList("1")));
+        verify(wmClient, times(2)).set(anyString(), anyInt(), any());
+    }
+.................................................................
+Caches biller data and updates timestamp for billers without products:
+    @Test
+    public void test_cache_biller_data_without_products() {
+        BillerDO billerDO = new BillerDO();
+        billerDO.setProcessorBillerId("1");
+        List<BillerDO> billerDOs = Arrays.asList(billerDO);
+        when(billerRepository.getBillersInfo(anyList(), eq(true))).thenReturn(billerDOs);
+        when(BillPayUtil.isBillerHavingProducts(any())).thenReturn(false);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(mock(OperationFuture.class));
+        codeUnderTest.reloadCacheForBillerData(new HashSet<>(Arrays.asList("1")));
+        verify(wmClient, times(2)).set(anyString(), anyInt(), any());
+    }
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
+.................................................................
