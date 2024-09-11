@@ -1,0 +1,806 @@
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+
+import java.util.*;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.junit.jupiter.SpringExtension;
+
+import com.example.demo.*;
+
+@SpringBootTest
+@ExtendWith(SpringExtension.class)
+class SchoolerCoreServiceIntegrationTest {
+
+    @Autowired
+    private SchoolerCoreService schoolerCoreService;
+
+    @Autowired
+    private SchoolerRepository schoolerRepository;
+
+    @Autowired
+    private WmClient wmClient;
+
+    @Autowired
+    private SchoolerCategoryVersionMappingRepository schoolerCategoryVersionMappingRepository;
+
+    @Autowired
+    private SchoolerSearchRepository schoolerSearchRepository;
+
+    @Autowired
+    private SchoolerMapper schoolerMapper;
+
+    @Test
+    void shouldTest_FetchSchoolerDataFromCache() throws ApplicationException {
+        String processorSchoolerId = "123";
+        String cacheKey = processorSchoolerId + WPSConstants.Schooler.SUFFIX_SCHOOLER_DATA;
+        Schooler expectedSchooler = new Schooler();
+
+        when(wmClient.get(cacheKey)).thenReturn(expectedSchooler);
+
+        Schooler result = schoolerCoreService.fetchAndCacheSchoolerData(processorSchoolerId);
+
+        assertEquals(expectedSchooler, result);
+        verify(wmClient, times(1)).get(cacheKey);
+    }
+
+    @Test
+    void shouldTest_HandleExceptionsDuringCacheFetch() throws ApplicationException {
+        String processorSchoolerId = "123";
+        String cachKey = processorSchoolerId + WPSConstants.Schooler.SUFFIX_SCHOOLER_DATA;
+        when(wmClient.get(cachKey)).thenThrow(new RuntimeException("Cache fetch error"));
+
+        assertThrows(ApplicationException.class, () -> {
+            schoolerCoreService.fetchAndCacheSchoolerData(processorSchoolerId);
+        });
+        verify(wmClient, times(1)).get(cachKey);
+    }
+
+    @Test
+    void shouldTest_HandleNullSchoolerId() throws ApplicationException {
+        String processorSchoolerId = "999988";
+        String cacheKey = processorSchoolerId + WPSConstants.Schooler.SUFFIX_SCHOOLER_DATA;
+        Schooler expectedSchooler = new Schooler();
+        when(wmClient.get(cacheKey)).thenReturn(expectedSchooler);
+
+        Schooler result = schoolerCoreService.fetchAndCacheSchoolerData(null, processorSchoolerId);
+
+        assertEquals(expectedSchooler, result);
+        verify(wmClient, times(1)).get(cacheKey);
+    }
+
+    @Test
+    void shouldTest_FetchSchoolerDataFromCacheUsingSchoolerId() {
+        UUID schoolerId = UUID.randomUUID();
+        String processorSchoolerId = null;
+        Schooler expecetedSchooler = MockUtils.getSchooler();
+        when(wmClient.get(schoolerId + WPSConstants.Schooler.SUFFIX_SCHOOLER_DATA)).thenReturn(expecetedSchooler);
+
+        Schooler result = schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId);
+
+        assertEquals(expecetedSchooler, result);
+        verify(wmClient).get(schoolerId + WPSConstants.Schooler.SUFFIX_SCHOOLER_DATA);
+    }
+
+    @Test
+    void shouldTest_Fetch_SchoolerDataFromCacheUsingProcessorSchoolerId() {
+        UUID schoolerId = null;
+        String processorSchoolerId = "processor123";
+        Schooler expecetedSchooler = MockUtils.getSchooler();
+        when(wmClient.get(processorSchoolerId + WPSConstants.Schooler.SUFFIX_SCHOOLER_DATA)).thenReturn(expecetedSchooler);
+
+        Schooler result = schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId);
+
+        assertEquals(expecetedSchooler, result);
+        verify(wmClient).get(processorSchoolerId + WPSConstants.Schooler.SUFFIX_SCHOOLER_DATA);
+    }
+
+    @Test
+    void shouldTest_HandleExceptionsFetchingSchoolerDataFromCache() {
+        UUID schoolerId = UUID.randomUUID();
+        String processorSchoolerId = "12345";
+        when(schoolerRepository.getBySchoolerIdAndEnabled(any(UUID.class), anyBoolean())).thenThrow(new RuntimeException("DB connection error"));
+
+        ApplicationException exception = assertThrows(ApplicationException.class, () -> schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId));
+
+        assertEquals("Exception while fetching schoolerDO from DB for schoolerId: [" + schoolerId + "]", exception.getMessage());
+    }
+
+    @Test
+    void shouldTest_HandleExceptionsFetchingSchoolerDataFromCache_2() {
+        UUID schoolerId = UUID.randomUUID();
+        String processorSchoolerId = "12345";
+        when(wmClient.get(anyString())).thenThrow(new RuntimeException("DB connection error"));
+
+        ApplicationException exception = assertThrows(ApplicationException.class, () -> schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId));
+
+        assertEquals("Schooler record not found/not enabled for schoolerId: [" + schoolerId + "]", exception.getMessage());
+    }
+
+    @Test
+    void shouldTest_HandleExceptionsFetchingSchoolerData() {
+        UUID schoolerId = UUID.randomUUID();
+        when(schoolerRepository.getBySchoolerIdAndEnabled(any(UUID.class), anyBoolean())).thenThrow(new RuntimeException("DB connection error"));
+
+        assertThrows(ProcessingException.class, () -> {
+            schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, null);
+        });
+    }
+
+    @Test
+    void shouldTest_HandleExceptionsFetchingProcessorSchoolerData() {
+        String processorSchoolerId = "12345";
+        when(schoolerRepository.getByProcessorSchoolerIdAndEnabled(any(), anyBoolean())).thenThrow(new RuntimeException("DB connection error"));
+
+        assertThrows(ProcessingException.class, () -> {
+            schoolerCoreService.fetchAndCacheSchoolerData(null, processorSchoolerId);
+        });
+    }
+
+    @Test
+    void null_schooler_id_processor_id() throws ApplicationException {
+        UUID schoolerId = null;
+        String processorSchoolerId = null;
+
+        Schooler result = schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId);
+
+        assertNull(result);
+    }
+
+    @Test
+    void shouldTest_FetchSchoolerCategoriesListFromCacheUsingVersion() {
+        int schoolerCategoryVersion = 1;
+
+        List<SchoolerCategory> expectedSchoolerCategories = null;
+        when(wmClient.get(WPSConstants.Schooler.SCHOOLER_CATEGORIES_MAP_CACHE_KEY + schoolerCategoryVersion)).thenReturn(expectedSchoolerCategories);
+
+        List<SchoolerCategory> actualSchoolerCategories = schoolerCoreService.getSchoolerCategoriesList(schoolerCategoryVersion);
+
+        assertEquals(expectedSchoolerCategories, actualSchoolerCategories);
+    }
+
+    @Test
+    void shouldTest_HandlingExceptionsGetSchoolerCategoriesList() {
+        when(wmClient.get(anyString())).thenThrow(new RuntimeException("simulating exceptions"));
+
+        List<SchoolerCategory> result = schoolerCoreService.getSchoolerCategoriesList(1);
+
+        assertNull(result);
+    }
+
+    @Test
+    void shouldTest_FetchAndCacheSchoolerCategoriesMapWithException() {
+        List<Integer> schoolerCategoryVersions = Arrays.asList(1, 2, 3);
+        when(schoolerCategoryVersionMappingRepository.getSchoolerCategoriesWithSchoolers(schoolerCategoryVersions)).thenThrow(new RuntimeException("DB Connection error"));
+
+        ProcessingException exception = assertThrows(ProcessingException.class, () -> schoolerCoreService.fetchAndCacheSchoolerCategoriesMap(schoolerCategoryVersions));
+
+        assertEquals(ErrorConstants.Common.SCHOOLER_CATEGORY_VERSION_MAPPING_DB_FETCH_ERROR, exception.getErrorCode());
+        assertFalse(exception.getMessage().contains("Error while fetching SchoolerCategoryVersionsMapping data from DB for schoolerCategoryVersions"));
+    }
+
+    @Test
+    void fetch_schooler_categories_from_repository() {
+        List<Integer> versions = Arrays.asList(1, 2, 3);
+        List<SchoolerCategoryVersionMappingDO> mockResult = new ArrayList<>();
+        when(schoolerCategoryVersionMappingRepository.getSchoolerCategoriesWithSchoolers(versions)).thenReturn(mockResult);
+
+        Map<Integer, List<SchoolerCategory>> result = schoolerCoreService.fetchAndCacheSchoolerCategoriesMap(versions);
+
+        verify(schoolerCategoryVersionMappingRepository).getSchoolerCategoriesWithSchoolers(versions);
+        assertNotNull(result);
+    }
+
+    @Test
+    void shouldTest_FetchAndCacheSchoolerCategoriesMap() {
+        List<Integer> schoolerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<SchoolerCategoryVersionMappingDO> schoolerCategoryVersionMappingDOList = new ArrayList<>();
+        SchoolerCategoryVersionMappingDO mappingDO1 = new SchoolerCategoryVersionMappingDO();
+        mappingDO1.setSchoolerCategoryVersion(1);
+        SchoolerCategoryVersionMappingDO mappingDO2 = new SchoolerCategoryVersionMappingDO();
+        mappingDO2.setSchoolerCategoryVersion(2);
+        schoolerCategoryVersionMappingDOList.add(mappingDO1);
+        schoolerCategoryVersionMappingDOList.add(mappingDO2);
+        OperationFuture operationFuture = mock(OperationFuture.class);
+
+        when(schoolerCategoryVersionMappingRepository.getSchoolerCategoriesWithSchoolers(schoolerCategoryVersions)).thenReturn(schoolerCategoryVersionMappingDOList);
+
+        List<SchoolerCategory> schoolerCategoriesList = new ArrayList<>();
+        SchoolerCategory schoolerCategory1 = new SchoolerCategory();
+        schoolerCategory1.setSchoolerCategoryVersion(1);
+        SchoolerCategory schoolerCategory2 = new SchoolerCategory();
+        schoolerCategory2.setSchoolerCategoryVersion(2);
+        schoolerCategoriesList.add(schoolerCategory1);
+        schoolerCategoriesList.add(schoolerCategory2);
+
+        when(schoolerMapper.mapSchoolerCategoryVersionMappingsDOsToSchoolerCategoryList(schoolerCategoryVersionMappingDOList)).thenReturn(schoolerCategoriesList);
+
+        Map<Integer, List<SchoolerCategory>> versionToSchoolerCategoriesMap = new HashMap<>();
+        versionToSchoolerCategoriesMap.put(1, Collections.singletonList(schoolerCategory1));
+        versionToSchoolerCategoriesMap.put(2, Collections.singletonList(schoolerCategory2));
+
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(operationFuture);
+
+        Map<Integer, List<SchoolerCategory>> result = schoolerCoreService.fetchAndCacheSchoolerCategoriesMap(schoolerCategoryVersions);
+
+        assertEquals(versionToSchoolerCategoriesMap, result);
+    }
+
+    @Test
+    void shouldTest_FetchAndCacheSchoolerCategoriesMap_2() {
+        List<Integer> schoolerCategoryVersions = Arrays.asList(1, 2, 3);
+        List<SchoolerCategoryVersionMappingDO> schoolerCategoryVersionMappingDOList = new ArrayList<>();
+        SchoolerCategoryVersionMappingDO mapping1 = MockUtils.getSchoolerCategoryVersionMappingDO();
+        schoolerCategoryVersionMappingDOList.add(mapping1);
+
+        when(schoolerCategoryVersionMappingRepository.getSchoolerCategoriesWithSchoolers(schoolerCategoryVersions)).thenReturn(schoolerCategoryVersionMappingDOList);
+
+        List<SchoolerCategory> schoolerCategoriesList = new ArrayList<>();
+        SchoolerCategory schoolerCategory = MockUtils.getSchoolerCategory();
+        schoolerCategoriesList.add(schoolerCategory);
+
+        Map<Integer, List<SchoolerCategory>> versionToSchoolerCategoriesMap = new HashMap<>();
+        versionToSchoolerCategoriesMap.put(1, schoolerCategoriesList);
+
+        Map<Integer, List<SchoolerCategory>> result = schoolerCoreService.fetchAndCacheSchoolerCategoriesMap(schoolerCategoryVersions);
+
+        assertNotEquals(versionToSchoolerCategoriesMap.size(), result.size());
+        assertFalse(result.containsKey(1));
+    }
+
+    @Test
+    void shouldTest_MethodHandlesExceptionsForFetchAndCacheSchoolerCategoriesMap() {
+        List<Integer> schoolerCategoryVersions = Arrays.asList(1, 2, 3);
+        doThrow(new RuntimeException("Error fetching and caching schooler categories map"))
+                .when(schoolerCoreService).fetchAndCacheSchoolerCategoriesMap(schoolerCategoryVersions);
+
+        assertThrows(RuntimeException.class, () -> schoolerCoreService.reloadCacheForSchoolerCategoryData(schoolerCategoryVersions));
+    }
+
+    @Test
+    void shouldTest_FetchAndCacheSchoolerCategoryDataUpdatedAtTimestamp_successfulCaching() {
+        List<Integer> schoolerCategoryVersions = List.of(1, 2, 3);
+        when(wmClient.set(anyString(), anyInt(), any())).thenReturn(mock(OperationFuture.class));
+        schoolerCoreService.reloadCacheForSchoolerCategoryData(schoolerCategoryVersions);
+        verify(wmClient, times(1)).set(anyString(), anyInt(), any());
+    }
+
+    @Test
+    void shouldTest_FetchesTimestampFromCacheSuccessfully() {
+        Date expectedDate = new Date();
+        when(wmClient.get(WPSConstants.Schooler.SCHOOLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenReturn(expectedDate);
+
+        Date result = schoolerCoreService.fetchSchoolerCategoryDataLastUpdatedAtTimestamp();
+
+        assertEquals(expectedDate, result);
+    }
+
+    @Test
+    void shouldTest_CacheFetchThrowsException() {
+        when(wmClient.get(WPSConstants.Schooler.SCHOOLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY)).thenThrow(new RuntimeException("simulating cache miss"));
+
+        assertThrows(RuntimeException.class, () -> schoolerCoreService.fetchSchoolerCategoryDataLastUpdatedAtTimestamp());
+    }
+
+    @Test
+    void shouldTest_RepositoryThrowsExeptionWhileFetchingTimestamp() {
+        when(schoolerCategoryVersionMappingRepository.getSchoolerCategoryDataUpdateTimestamp()).thenThrow(RuntimeException.class);
+
+        assertThrows(ProcessingException.class, () -> {
+            schoolerCoreService.fetchAndCacheSchoolerCategoryDataUpdatedAtTimestamp();
+        });
+    }
+
+    @Test
+    void shouldTest_FetchAndCacheSchoolerCategoryDataUpdatedAtTimestamp() {
+        Date expectedDate = new Date();
+        OperationFuture<Boolean> operationFuture = mock(OperationFuture.class);
+        when(wmClient.set((WPSConstants.Schooler.SCHOOLER_CATEGORY_DATA_UPDATED_AT_CACHE_KEY), (0), (expectedDate))).thenReturn(operationFuture);
+        when(schoolerCategoryVersionMappingRepository.getSchoolerCategoryDataUpdateTimestamp()).thenReturn(expectedDate);
+
+        Date result = schoolerCoreService.fetchAndCacheSchoolerCategoryDataUpdatedAtTimestamp();
+
+        assertEquals(expectedDate, result);
+    }
+
+    @Test
+    void shouldTest_FetchSchoolerDataLastUpdatedAtMapAllDataInCache() {
+        List<UUID> schoolerIds = Collections.singletonList(UUID.randomUUID());
+        List<String> processorSchoolerids = Arrays.asList("123", "456");
+        Map<String, Object> cacheData = new HashMap<>();
+        cacheData.put("123_WPS_SCHOOLER_DATA_UPDATED_AT", LocalDateTime.now());
+        cacheData.put("456_WPS_SCHOOLER_DATA_UPDATED_AT", LocalDateTime.now());
+
+        when(wmClient.getBulk(anyList())).thenReturn(cacheData);
+
+        Map<String, Object> result = schoolerCoreService.fetchSchoolerDataLastUpdatedAtMap(schoolerIds, processorSchoolerids);
+        assertEquals(2, result.size());
+        verify(wmClient, times(1)).getBulk(anyList());
+    }
+
+    @Test
+    void shouldTest_HandleNoSchoolerDataFoundInDatabaseEmptySchoolerIds() {
+        List<UUID> schoolerIds = Collections.emptyList();
+        List<String> processorSchoolerIds = Arrays.asList("123", "456");
+        Map<String, Object> expectedMap = new HashMap<>();
+
+        when(wmClient.getBulk(anyList())).thenReturn(new HashMap<>());
+        when(schoolerRepository.getSchoolersInfoByProcessorSchoolerIds(anyList(), eq(false))).thenReturn(Collections.emptyList());
+
+        Map<String, Object> result = schoolerCoreService.fetchSchoolerDataLastUpdatedAtMap(schoolerIds, processorSchoolerIds);
+
+        assertEquals(expectedMap, result);
+        verify(wmClient, times(1)).getBulk(anyList());
+        verify(schoolerRepository, times(1)).getSchoolersInfoByProcessorSchoolerIds(anyList(), eq(false));
+    }
+
+    @Test
+    void shouldTest_HandleExceptionsDuringDBFetch() {
+        List<UUID> schoolerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorSchoolerIds = Arrays.asList("123", "456");
+
+        Map<String, Object> expectedOutput = new HashMap<>();
+
+        Map<String, Object> result = schoolerCoreService.fetchSchoolerDataLastUpdatedAtMap(schoolerIds, processorSchoolerIds);
+
+        assertEquals(expectedOutput, result);
+    }
+
+    @Test
+    void shouldTest_ReloadCacheForSchoolerDataHandlesExceptions_2() {
+        List<UUID> schoolerIds = Collections.singletonList(UUID.randomUUID());
+        List<String> processorSchoolerids = Arrays.asList("123", "456");
+
+        when(schoolerRepository.getSchoolersInfoBySchoolerId(anyList(), eq(true))).thenThrow(new RuntimeException("Database connection error"));
+
+        assertThrows(ProcessingException.class, () -> {
+            schoolerCoreService.fetchSchoolerDataLastUpdatedAtMap(schoolerIds, processorSchoolerids);
+        });
+    }
+
+    @Test
+    void shouldTest_ReloadCacheForSchoolerDataHandlesExceptions_3() {
+        List<UUID> schoolerIds = null;
+        List<String> processorSchoolerids = Arrays.asList("123", "456");
+
+        when(schoolerRepository.getSchoolersInfoByProcessorSchoolerIds(anyList(), eq(false))).thenThrow(new RuntimeException("Database connection error"));
+
+        assertThrows(ProcessingException.class, () -> {
+            schoolerCoreService.fetchSchoolerDataLastUpdatedAtMap(schoolerIds, processorSchoolerids);
+        });
+    }
+
+    @Test
+    void shouldTest_HandlesCacheFetchExceptions() {
+        List<UUID> schoolerIds = Arrays.asList(UUID.randomUUID(), UUID.randomUUID());
+        List<String> processorSchoolerIds = Arrays.asList("123", "456");
+        when(wmClient.getBulk(anyList())).thenThrow(new RuntimeException("Mocked Exceptions"));
+        Map<String, Object> result = schoolerCoreService.fetchSchoolerDataLastUpdatedAtMap(schoolerIds, processorSchoolerIds);
+
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void shouldTest_FetchSchoolerDataFromDBFor
+
+**************************************************************
+Certainly, I'll create a pure integration test for the `SchoolerCoreService` class. This test will focus on testing the entire system end-to-end, including database operations and cache interactions. We'll use Spring Boot's testing capabilities along with TestContainers for database testing.
+
+
+
+```java
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+
+import com.example.schooler.model.Schooler;
+import com.example.schooler.repository.SchoolerRepository;
+import com.example.schooler.service.SchoolerCoreService;
+import com.example.schooler.model.SchoolerDO;
+
+import java.util.UUID;
+import java.util.List;
+import java.util.Date;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+@SpringBootTest
+@Testcontainers
+class SchoolerCoreServiceIntegrationTest {
+
+    @Container
+    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:13")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @Autowired
+    private SchoolerCoreService schoolerCoreService;
+
+    @Autowired
+    private SchoolerRepository schoolerRepository;
+
+    @DynamicPropertySource
+    static void registerPgProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+    }
+
+    @BeforeEach
+    void setUp() {
+        schoolerRepository.deleteAll();
+    }
+
+    @Test
+    void testFetchAndCacheSchoolerData() throws Exception {
+        // Arrange
+        SchoolerDO schoolerDO = new SchoolerDO();
+        schoolerDO.setSchoolerId(UUID.randomUUID());
+        schoolerDO.setProcessorSchoolerId("TEST123");
+        schoolerDO.setSchoolerName("Test Schooler");
+        schoolerDO.setEnabled(true);
+        schoolerRepository.save(schoolerDO);
+
+        // Act
+        Schooler result = schoolerCoreService.fetchAndCacheSchoolerData(schoolerDO.getProcessorSchoolerId());
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(schoolerDO.getSchoolerName(), result.getSchoolerName());
+        assertEquals(schoolerDO.getProcessorSchoolerId(), result.getProcessorSchoolerId());
+
+        // Verify cache
+        Schooler cachedResult = schoolerCoreService.fetchAndCacheSchoolerData(schoolerDO.getProcessorSchoolerId());
+        assertEquals(result, cachedResult);
+    }
+
+    @Test
+    void testGetPopularSchoolers() throws Exception {
+        // Arrange
+        List<SchoolerDO> popularSchoolers = createAndSavePopularSchoolers();
+
+        // Act
+        List<Schooler> result = schoolerCoreService.getPopularSchoolers();
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(popularSchoolers.size(), result.size());
+        for (int i = 0; i < result.size(); i++) {
+            assertEquals(popularSchoolers.get(i).getSchoolerName(), result.get(i).getSchoolerName());
+        }
+    }
+
+    @Test
+    void testFetchSchoolerDataLastUpdatedAtMap() {
+        // Arrange
+        SchoolerDO schoolerDO = new SchoolerDO();
+        schoolerDO.setSchoolerId(UUID.randomUUID());
+        schoolerDO.setProcessorSchoolerId("TEST456");
+        schoolerDO.setSchoolerName("Test Schooler 2");
+        schoolerDO.setEnabled(true);
+        schoolerDO.setUpdatedAt(new Date());
+        schoolerRepository.save(schoolerDO);
+
+        // Act
+        Map<String, Object> result = schoolerCoreService.fetchSchoolerDataLastUpdatedAtMap(
+            List.of(schoolerDO.getSchoolerId()), null);
+
+        // Assert
+        assertNotNull(result);
+        assertTrue(result.containsKey(schoolerDO.getSchoolerId().toString() + "schooler_data_updated_at"));
+        assertNotNull(result.get(schoolerDO.getSchoolerId().toString() + "schooler_data_updated_at"));
+    }
+
+    private List<SchoolerDO> createAndSavePopularSchoolers() {
+        List<SchoolerDO> schoolers = new ArrayList<>();
+        for (int i = 0; i < 5; i++) {
+            SchoolerDO schooler = new SchoolerDO();
+            schooler.setSchoolerId(UUID.randomUUID());
+            schooler.setProcessorSchoolerId("POPULAR" + i);
+            schooler.setSchoolerName("Popular Schooler " + i);
+            schooler.setEnabled(true);
+            schooler.setPopular(true);
+            schoolers.add(schooler);
+        }
+        return schoolerRepository.saveAll(schoolers);
+    }
+}
+
+```
+
+This integration test demonstrates several good practices:
+
+1. Use of TestContainers: We're using a real PostgreSQL database for testing, ensuring that our tests run against the same type of database used in production.
+
+2. Spring Boot Test: The `@SpringBootTest` annotation ensures that the entire application context is loaded, simulating a real application environment.
+
+3. Dynamic Property Source: We're dynamically setting the database properties to use the TestContainers database.
+
+4. Database Cleanup: The `setUp` method cleans the database before each test, ensuring a consistent starting state.
+
+5. End-to-End Testing: We're testing the entire flow from database operations to service layer logic, including caching mechanisms.
+
+6. Multiple Scenarios: We're testing different scenarios like fetching and caching schooler data, retrieving popular schoolers, and fetching last updated timestamps.
+
+7. Data Preparation: We're creating and saving test data directly in the database to set up our test scenarios.
+
+8. Assertions: We're using JUnit assertions to verify the results of our operations, including checking both database state and returned objects.
+
+Key points about this integration test:
+
+- It tests the `SchoolerCoreService` in conjunction with the actual database and cache, not mocking these dependencies.
+- It verifies that data is correctly saved to and retrieved from the database.
+- It checks that the caching mechanism works as expected.
+- It tests complex operations like fetching popular schoolers and last updated timestamps.
+
+To run this test, you'll need to ensure that your project has the necessary dependencies:
+
+1. Spring Boot Test
+2. TestContainers
+3. PostgreSQL driver
+
+You may need to adjust import statements and some method signatures based on your exact implementation of `SchoolerCoreService` and related classes.
+
+This test provides a high level of confidence that your `SchoolerCoreService` works correctly with its dependencies in a production-like environment. It can catch issues that unit tests might miss, such as incorrect database queries, caching problems, or unexpected interactions between components.
+
+Would you like me to explain any part of this integration test in more detail?
+.....................
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import com.example.demo.SchoolerCoreService;
+import com.example.demo.SchoolerRepository;
+import com.example.demo.WmClient;
+import com.example.demo.SchoolerDO;
+import com.example.demo.Schooler;
+
+@SpringBootTest
+@ExtendWith(MockitoExtension.class)
+public class SchoolerCoreServiceIntegrationTest {
+
+    @Autowired
+    private SchoolerCoreService schoolerCoreService;
+
+    @MockBean
+    private SchoolerRepository schoolerRepository;
+
+    @MockBean
+    private WmClient wmClient;
+
+    @Test
+    public void testFetchAndCacheSchoolerData() throws Exception {
+        UUID schoolerId = UUID.randomUUID();
+        String processorSchoolerId = "processorSchoolerId";
+
+        SchoolerDO schoolerDO = new SchoolerDO();
+        schoolerDO.setSchoolerId(schoolerId);
+        schoolerDO.setProcessorSchoolerId(processorSchoolerId);
+
+        when(schoolerRepository.getBySchoolerIdAndEnabled(any(UUID.class), any(Boolean.class)))
+                .thenReturn(Optional.of(schoolerDO));
+        when(wmClient.get(any(String.class))).thenReturn(null);
+        when(wmClient.set(any(String.class), any(Integer.class), any(Object.class))).thenReturn(null);
+
+        Schooler schooler = schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId);
+
+        assertThat(schooler).isNotNull();
+        assertThat(schooler.getSchoolerId()).isEqualTo(schoolerId);
+        assertThat(schooler.getProcessorSchoolerId()).isEqualTo(processorSchoolerId);
+    }
+}
+........................................
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import com.example.demo.SchoolerCoreService;
+import com.example.demo.SchoolerRepository;
+import com.example.demo.WmClient;
+import com.example.demo.SchoolerDO;
+import com.example.demo.Schooler;
+
+@SpringBootTest
+@ExtendWith(MockitoExtension.class)
+public class SchoolerCoreServiceIntegrationTest {
+
+    @Autowired
+    private SchoolerCoreService schoolerCoreService;
+
+    @MockBean
+    private SchoolerRepository schoolerRepository;
+
+    @MockBean
+    private WmClient wmClient;
+
+    @Test
+    public void testFetchAndCacheSchoolerData() throws Exception {
+        UUID schoolerId = UUID.randomUUID();
+        String processorSchoolerId = "processorSchoolerId";
+
+        SchoolerDO schoolerDO = new SchoolerDO();
+        schoolerDO.setSchoolerId(schoolerId);
+        schoolerDO.setProcessorSchoolerId(processorSchoolerId);
+
+        when(schoolerRepository.getBySchoolerIdAndEnabled(any(UUID.class), any(Boolean.class)))
+                .thenReturn(Optional.of(schoolerDO));
+        when(wmClient.get(any(String.class))).thenReturn(null);
+        when(wmClient.set(any(String.class), any(Integer.class), any(Object.class))).thenReturn(null);
+
+        Schooler schooler = schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId);
+
+        assertThat(schooler).isNotNull();
+        assertThat(schooler.getSchoolerId()).isEqualTo(schoolerId);
+        assertThat(schooler.getProcessorSchoolerId()).isEqualTo(processorSchoolerId);
+    }
+}
+.........................................................
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import com.example.demo.SchoolerCoreService;
+import com.example.demo.SchoolerRepository;
+import com.example.demo.SchoolerDO;
+import com.example.demo.ApplicationException;
+import com.example.demo.BusinessValidationException;
+
+[@SpringBootTest](https://spring.io/projects/spring-boot)
+[@ExtendWith(MockitoExtension.class)](https://junit.org/junit5/docs/current/user-guide/)
+public class SchoolerCoreServiceIntegrationTest {
+
+    @Autowired
+    private SchoolerCoreService schoolerCoreService;
+
+    [@MockBean](https://junit.org/junit5/docs/current/user-guide/)
+    private SchoolerRepository schoolerRepository;
+
+    @Test
+    public void testGetSchoolerDOBySchoolerId() throws Exception {
+        UUID schoolerId = UUID.randomUUID();
+
+        SchoolerDO schoolerDO = new SchoolerDO();
+        schoolerDO.setSchoolerId(schoolerId);
+
+        when(schoolerRepository.getBySchoolerIdAndEnabled(any(UUID.class), any(Boolean.class)))
+                .thenReturn(Optional.of(schoolerDO));
+
+        SchoolerDO result = schoolerCoreService.getSchoolerDO(schoolerId, null);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getSchoolerId()).isEqualTo(schoolerId);
+    }
+
+    @Test
+    public void testGetSchoolerDOByProcessorSchoolerId() throws Exception {
+        String processorSchoolerId = "processorSchoolerId";
+
+        SchoolerDO schoolerDO = new SchoolerDO();
+        schoolerDO.setProcessorSchoolerId(processorSchoolerId);
+
+        when(schoolerRepository.getByProcessorSchoolerIdAndEnabled(any(String.class), any(Boolean.class)))
+                .thenReturn(Optional.of(schoolerDO));
+
+        SchoolerDO result = schoolerCoreService.getSchoolerDO(null, processorSchoolerId);
+
+        assertThat(result).isNotNull();
+        assertThat(result.getProcessorSchoolerId()).isEqualTo(processorSchoolerId);
+    }
+
+    @Test
+    public void testGetSchoolerDONotFound() {
+        UUID schoolerId = UUID.randomUUID();
+
+        when(schoolerRepository.getBySchoolerIdAndEnabled(any(UUID.class), any(Boolean.class)))
+                .thenReturn(Optional.empty());
+
+        try {
+            schoolerCoreService.getSchoolerDO(schoolerId, null);
+        } catch (ApplicationException e) {
+            assertThat(e).isInstanceOf(BusinessValidationException.class);
+            assertThat(e.getMessage()).contains("Schooler record not found/not enabled");
+        }
+    }
+}
+.........................................
+package com.example.demo;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
+
+import java.util.Optional;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+
+import com.example.demo.service.SchoolerCoreService;
+import com.example.demo.repository.SchoolerRepository;
+import com.example.demo.client.WmClient;
+import com.example.demo.entity.SchoolerDO;
+import com.example.demo.entity.Schooler;
+
+@SpringBootTest
+@ExtendWith(MockitoExtension.class)
+public class SchoolerCoreServiceIntegrationTest {
+
+    @Autowired
+    private SchoolerCoreService schoolerCoreService;
+
+    @MockBean
+    private SchoolerRepository schoolerRepository;
+
+    @MockBean
+    private WmClient wmClient;
+
+    @Test
+    public void testFetchAndCacheSchoolerData() throws Exception {
+        UUID schoolerId = UUID.randomUUID();
+        String processorSchoolerId = "processorSchoolerId";
+
+        SchoolerDO schoolerDO = new SchoolerDO();
+        schoolerDO.setSchoolerId(schoolerId);
+        schoolerDO.setProcessorSchoolerId(processorSchoolerId);
+
+        when(schoolerRepository.getBySchoolerIdAndEnabled(any(UUID.class), any(Boolean.class)))
+                .thenReturn(Optional.of(schoolerDO));
+        when(wmClient.get(any(String.class))).thenReturn(null);
+        when(wmClient.set(any(String.class), any(Integer.class), any(Object.class))).thenReturn(null);
+
+        Schooler schooler = schoolerCoreService.fetchAndCacheSchoolerData(schoolerId, processorSchoolerId);
+
+        assertThat(schooler).isNotNull();
+        assertThat(schooler.getSchoolerId()).isEqualTo(schoolerId);
+        assertThat(schooler.getProcessorSchoolerId()).isEqualTo(processorSchoolerId);
+    }
+}
