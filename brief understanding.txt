@@ -1,0 +1,155 @@
+The provided code snippet is part of a Java class that manages biller data within a microservice. The class, `BillerCoreService`, is responsible for fetching and caching biller-related information, such as biller categories, biller data, and incorrect search data.
+
+The `getBillerCategoriesList` method is used to retrieve a list of biller categories based on the provided `billerCategoryVersion`. It first attempts to fetch the data from the cache using the `cacheKey`. If the data is not found in the cache, it calls the `fetchAndCacheBillerCategoriesMap` method to fetch the data from the database and store it in the cache.
+
+The `fetchAndCacheBillerCategoriesMap` method fetches the biller category version mappings from the database using the provided `billerCategoryVersions`. It then maps the biller categories to their respective versions and stores the data in the cache.
+
+The `fetchBillerCategoriesMap` method is used internally to fetch the biller category version mappings from the database. It uses the `billerCategoryVersionMappingRepository` to query the database and returns the result.
+
+The `mapBillerVersionToBillerCategories` method is used to map the biller category version mappings to their respective versions. It creates a map where the biller category version is the key and the list of biller categories is the value.
+
+The `fetchAndCacheBillerCategoryDataUpdatedAtTimestamp` method is used to fetch the timestamp of the last update for biller category data from the database and store it in the cache.
+
+The `fetchBillerCategoryDataLastUpdatedAtTimestamp` method is used internally to fetch the timestamp of the last update for biller category data from the database. It uses the `billerCategoryVersionMappingRepository` to query the database and returns the result.
+
+The `reloadCacheForBillerCategoryData` method is used to reload the cache for biller category data. It calls the `fetchAndCacheBillerCategoriesMap` and `fetchAndCacheBillerCategoryDataUpdatedAtTimestamp` methods to fetch the updated data and store it in the cache.
+
+The `getBillerDataLastUpdatedAtMap` method is used to retrieve a map containing the timestamp of the last update for biller data based on the provided `billerIds` and `processorBillerIds`. It first attempts to fetch the data from the cache using the respective cache keys. If the data is not found in the cache, it calls the `fetchBillerDataLastUpdatedAtMapFromDB` method to fetch the data from the database and store it in the cache.
+
+The `fetchBillerDataLastUpdatedAtMapFromDB` method is used internally to fetch the timestamp of the last update for biller data from the database based on the provided `billerIds` and `processorBillerIds`. It uses the `billerRepository` to query the database and returns the result.
+
+The `reloadCacheForBillerData` method is used to reload the cache for biller data. It calls the `fetchAndCacheBillerData` method to fetch the updated data and store it in the cache.
+
+The `fetchAndCacheBillerData` method is used internally to fetch the biller data from the database based on the provided `billerIds` and `processorBillerIds`. It then calls the `fetchAndCacheBillerDataAndUpdateTimestamp` method to store the data in the cache and update the timestamp of the last update.
+
+The `fetchAndCacheBillerDataAndUpdateTimestamp` method is used internally to fetch the biller data from the database and store it in the cache. It also updates the timestamp of the last update for the biller data.
+
+The `evictDataFromCacheForBillersNotPresentInDB` method is used to evict the biller data from the cache for billers that are not present in the database. It iterates through the provided `billerIds` and `processorBillerIds`, removes the corresponding cache keys, and logs the removal of each key.
+
+The `addBillersToCacheForGivenBiller` method is used internally to add the biller data to the cache for a given biller. It constructs the cache keys for the biller data and sub-data, fetches the data from the biller object, and stores it in the cache.
+
+The `fetchAndCacheBillerIncorrectSearchKeywordMap` and `fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp` methods are used to fetch and cache the incorrect search keyword map and the timestamp of the last update for incorrect search data, respectively.
+
+The `reloadCacheForBillerIncorrectSearchData` method is used to reload the cache for incorrect search data. It calls the `fetchAndCacheBillerIncorrectSearchKeywordMap` and `fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp` methods to fetch the updated data and store it in the cache.
+
+The `getBillerIncorrectSearchDataLastUpdatedAtMap` method is used to retrieve a map containing the timestamp of the last update for incorrect search data based on the provided `billerIds` and `processorBillerIds`. It first attempts to fetch the data from the cache using the respective cache keys. If the data is not found in the cache, it calls the `fetchBillerIncorrectSearchDataLastUpdatedAtMapFromDB` method to fetch the data from the database and store it in the cache.
+
+The `fetchBillerIncorrectSearchDataLastUpdatedAtMapFromDB` method is used internally to fetch the timestamp of the last update for incorrect search data from the database based on the provided `billerIds` and `processorBillerIds`. It uses the `billerRepository` to query the database and returns the result.
+
+The `reloadIncorrectSearchDataInCache` method is used to reload the cache for incorrect search data. It calls the `fetchAndCacheBillerIncorrectSearchKeywordMap` and `fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp` methods to fetch the updated data and store it in the cache.
+
+The `getBillerDataLastUpdatedAt` method is used to retrieve the timestamp of the last update for biller data based on the provided `billerId` or `processorBillerId`. It first attempts to fetch the data from the cache using the respective cache key. If the data is not found in the cache, it calls the `fetchBillerDataLastUpdatedAtFromDB` method to fetch the data from the database.
+
+The `fetchBillerDataLastUpdatedAtFromDB` method is used internally to fetch the timestamp of the last update for biller data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `evictDataFromCacheForBillerNotPresentInDB` method is used to evict the biller data from the cache for a biller that is not present in the database. It constructs the cache keys for the biller data and sub-data, removes the corresponding cache keys, and logs the removal of each key.
+
+The `fetchBillerDataAndUpdateTimestamp` method is used internally to fetch the biller data from the database based on the provided `billerId` or `processorBillerId`, store it in the cache, and update the timestamp of the last update.
+
+The `fetchBillerIncorrectSearchDataAndUpdateTimestamp` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`, store it in the cache, and update the timestamp of the last update.
+
+The `fetchBillerData` method is used internally to fetch the biller data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerIncorrectSearchData` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerIncorrectSearchKeywordMap` method is used internally to fetch the incorrect search keyword map from the database. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerIncorrectSearchDataUpdateTimestamp` method is used internally to fetch the timestamp of the last update for incorrect search data from the database. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerCategoryDataAndUpdateTimestamp` method is used internally to fetch the biller category data from the database based on the provided `billerId` or `processorBillerId`, store it in the cache, and update the timestamp of the last update.
+
+The `fetchBillerCategoryData` method is used internally to fetch the biller category data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerCategoryVersionMapping` method is used internally to fetch the biller category version mapping from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerCategoryVersionMappingFromDB` method is used internally to fetch the biller category version mapping from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerDataFromDB` method is used internally to fetch the biller data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerIncorrectSearchDataFromDB` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerCategoryVersionMappingFromDB` method is used internally to fetch the biller category version mapping from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerDataAndUpdateTimestamp` method is used internally to fetch the biller data from the database based on the provided `billerId` or `processorBillerId`, store it in the cache, and update the timestamp of the last update.
+
+The `fetchBillerIncorrectSearchDataAndUpdateTimestamp` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`, store it in the cache, and update the timestamp of the last update.
+
+The `fetchBillerCategoryDataFromDB` method is used internally to fetch the biller category data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerIncorrectSearchDataFromDB` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerCategoryVersionMappingFromDB` method is used internally to fetch the biller category version mapping from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerDataFromDB` method is used internally to fetch the biller data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerIncorrectSearchDataFromDB` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerCategoryVersionMappingFromDB` method is used internally to fetch the biller category version mapping from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerDataAndUpdateTimestamp` method is used internally to fetch the biller data from the database based on the provided `billerId` or `processorBillerId`, store it in the cache, and update the timestamp of the last update.
+
+The `fetchBillerIncorrectSearchDataAndUpdateTimestamp` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`, store it in the cache, and update the timestamp of the last update.
+
+The `fetchBillerCategoryDataFromDB` method is used internally to fetch the biller category data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerIncorrectSearchDataFromDB` method is used internally to fetch the incorrect search data from the database based on the provided `billerId` or `processorBillerId`. It uses the `billerRepository` to query the database and returns the result.
+
+The `fetchBillerCategoryVersionMappingFromDB` method is used internally to fetch the biller category version mapping from the database based on the provided `billerId` or `processorBillerId`.
+.......................................................
+The provided code snippet is a Java class that implements the `BillerController` interface. The class, `BillerControllerImpl`, is responsible for handling requests related to biller data, such as retrieving biller categories, popular billers, biller data by ID, updating biller data information, reloading and evicting cache for biller data, retrieving biller promotions, and retrieving incorrect search keywords.
+
+The class uses dependency injection to inject the `BillerService` and `BillerPromotionService` instances, as well as the `WalletPaymentServiceConfiguration` instance. The `BillerService` is responsible for fetching and manipulating biller data, while the `BillerPromotionService` is responsible for retrieving biller promotions. The `WalletPaymentServiceConfiguration` provides configuration settings for the application.
+
+The class implements the methods defined in the `BillerController` interface, such as `getBillerCategories`, `getPopularBillers`, `getBillerById`, `getBillerDataUpdateInfo`, `reloadCacheForBillerData`, `evictCacheForBillerData`, `getBillerPromotions`, and `getBillerIncorrectSearchKeywords`. Each method delegates the request to the appropriate service or performs the required operation.
+
+The `@RestController` annotation indicates that this class is a RESTful controller, which means it can handle HTTP requests. The `@Autowired` annotation is used to inject the required dependencies. The `@ManagedConfiguration` annotation is used to inject the `WalletPaymentServiceConfiguration` instance.
+
+Overall, the `BillerControllerImpl` class provides a RESTful API for handling biller-related requests, utilizing the injected services and configuration settings to fulfill the requests.
+...........................................................
+The `BillerServiceImpl` class is an implementation of the `BillerService` interface, which provides methods for fetching and manipulating biller-related data. The class is annotated with `@Component` to indicate that it is a Spring component and `@Slf4j` to enable logging using the Lombok library.
+
+The class has several instance variables, including `BillerDTOMapper` for mapping biller data to DTOs, `WalletPaymentServiceConfiguration` for accessing configuration settings, and `BillerCoreService` for interacting with the core biller service.
+
+The `init` method is annotated with `@PostConstruct` to indicate that it should be executed after the bean is initialized. In this method, the cache for biller category data is reloaded using the `billerCoreService` with the configured biller category versions.
+
+The `getBillerCategories` method retrieves biller categories from the cache using the provided biller category version and maps them to DTOs using the `BillerDTOMapper`. It also returns the timestamp of the last update for the biller category data.
+
+The `getPopularBillers` method fetches popular billers from the core service and maps them to DTOs using the `BillerDTOMapper`. It returns a response containing the list of popular billers.
+
+The `getBillerById` method fetches biller data by ID or processorBillerId from the core service, maps it to DTOs, and returns a response containing the biller information and sub-billers.
+
+The `getBillerDataUpdateInfo` method retrieves the last update timestamps for biller category data, biller plan details, and biller incorrect search keywords. It maps the biller data last update timestamps to DTOs and returns a response containing the update information.
+
+The `reloadCacheForBillerData` method reloads the cache for biller data based on the provided request. It handles reloading for biller category data, biller incorrect search data, and biller plan details. It returns a response indicating the success or failure of the cache reloading operation.
+
+The `evictCacheForBillerData` method evicts the cache for biller data based on the provided request. It handles evicting for all billers or specific billers and returns a response indicating the success or failure of the cache eviction operation.
+
+The `getBillerIncorrectSearchKeywords` method fetches incorrect search keywords from the core service, maps them to DTOs, and returns a response containing the incorrect search keywords and their last update timestamp.
+
+The `updateBillerBehaviourCode` method updates the behaviour code for billers based on the provided request. It handles updating for all billers or specific billers and returns a map of biller IDs to their updated behaviour codes.
+
+Overall, the `BillerServiceImpl` class provides a comprehensive implementation of the `BillerService` interface, handling various operations related to biller data retrieval, manipulation, and cache management.
+..................................
+The `BillerPromotionCoreService` is a service class responsible for managing biller promotion-related operations within the Walmart Payment Services (WPS) application. It interacts with the database and provides methods for fetching, creating, updating, and deleting biller promotion data.
+
+The `BillerPromotionCoreService` class has several methods, including:
+
+- `createBillerPromotion`: This method creates a new biller promotion in the database based on the provided `BillerPromotionDTO`. It returns the created `BillerPromotionDTO` with the generated ID.
+
+- `updateBillerPromotion`: This method updates an existing biller promotion in the database based on the provided `BillerPromotionDTO`. It returns the updated `BillerPromotionDTO`.
+
+- `deleteBillerPromotion`: This method deletes a biller promotion from the database based on the provided biller promotion ID. It does not return any value.
+
+- `fetchBillerPromotionById`: This method fetches a biller promotion from the database based on the provided biller promotion ID. It returns the fetched `BillerPromotionDTO`.
+
+- `fetchBillerPromotionsByBillerId`: This method fetches all biller promotions for a specific biller from the database based on the provided biller ID. It returns a list of `BillerPromotionDTO` objects.
+
+- `fetchBillerPromotionsByBillerIds`: This method fetches all biller promotions for multiple billers from the database based on the provided list of biller IDs. It returns a map of biller IDs to lists of `BillerPromotionDTO` objects.
+
+- `fetchBillerPromotionsByBillerPlanId`: This method fetches all biller promotions for a specific biller plan from the database based on the provided biller plan ID. It returns a list of `BillerPromotionDTO` objects.
+
+- `fetchBillerPromotionsByBillerPlanIds`: This method fetches all biller promotions for multiple biller plans from the database based on the provided list of biller plan IDs. It returns a map of biller plan IDs to lists of `BillerPromotionDTO` objects.
+
+These methods provide the core functionality for managing biller promotion data within the WPS application. They interact with the database using JPA repositories and mappers to perform CRUD operations on the `BillerPromotion` entity.
+
+Please note that the code snippet provided does not contain any additional code beyond the immediate scope of the `BillerPromotionCoreService` class. The methods mentioned above are the primary functionalities of the service class.
