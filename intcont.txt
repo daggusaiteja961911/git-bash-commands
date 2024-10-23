@@ -1,0 +1,81 @@
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+public class SchoolPaymentControllerIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @MockBean
+    private SchoolPaymentService schoolPaymentService;
+
+    @MockBean
+    private WPSAuthValidator wpsAuthValidator;
+
+    @Test
+    public void testFetchSchoolPayPaymentInstruments_Success() throws Exception {
+        // Prepare request and response objects
+        FetchSchoolPayPaymentInstrumentsRequest request = new FetchSchoolPayPaymentInstrumentsRequest();
+        request.setCustomerAccountId(12345L);
+
+        FetchSchoolPayPaymentInstrumentsResponse response = new FetchSchoolPayPaymentInstrumentsResponse();
+        // Set up the response object as needed
+        response.setSomeField("expectedValue");
+
+        // Mock the service layer
+        when(schoolPaymentService.fetchSchoolPayPaymentInstruments(eq(request), any(MultiValueMap.class)))
+            .thenReturn(response);
+
+        // Perform the request and verify the response
+        mockMvc.perform(post("/services/school-payment/v1/options")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"customerAccountId\": 12345}")
+                .headers(new LinkedMultiValueMap<>())) // Add headers if necessary
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.someField").value("expectedValue"));
+    }
+
+    @Test
+    public void testFetchSchoolPayPaymentInstruments_InvalidRequest() throws Exception {
+        // Perform the request with invalid data and verify the response
+        mockMvc.perform(post("/services/school-payment/v1/options")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"customerAccountId\": null}") // Invalid request
+                .headers(new LinkedMultiValueMap<>()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    public void testFetchSchoolPayPaymentInstruments_ServiceException() throws Exception {
+        // Prepare request object
+        FetchSchoolPayPaymentInstrumentsRequest request = new FetchSchoolPayPaymentInstrumentsRequest();
+        request.setCustomerAccountId(12345L);
+
+        // Mock the service layer to throw an exception
+        when(schoolPaymentService.fetchSchoolPayPaymentInstruments(eq(request), any(MultiValueMap.class)))
+            .thenThrow(new ApplicationException("Service error"));
+
+        // Perform the request and verify the response
+        mockMvc.perform(post("/services/school-payment/v1/options")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content("{\"customerAccountId\": 12345}")
+                .headers(new LinkedMultiValueMap<>()))
+                .andExpect(status().isInternalServerError());
+    }
+}
