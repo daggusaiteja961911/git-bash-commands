@@ -79,3 +79,227 @@ public class SchoolPaymentControllerIntegrationTest {
                 .andExpect(status().isInternalServerError());
     }
 }
+......................................................
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class SchoolPaymentControllerIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private SchoolPaymentService schoolPaymentService;
+
+    private MultiValueMap<String, String> headers;
+    private FetchSchoolPayPaymentInstrumentsRequest validRequest;
+    private FetchSchoolPayPaymentInstrumentsResponse successResponse;
+
+    @BeforeEach
+    void setUp() {
+        // Initialize headers
+        headers = new LinkedMultiValueMap<>();
+        headers.add("Authorization", "Bearer test-token");
+        headers.add("X-Correlation-ID", "test-correlation-id");
+        headers.add("X-Device-ID", "test-device-id");
+
+        // Initialize valid request
+        validRequest = FetchSchoolPayPaymentInstrumentsRequest.builder()
+                .schoolId("SCHOOL123")
+                .studentId("STUDENT456")
+                .amount(1000.00)
+                .currency("USD")
+                .build();
+
+        // Initialize success response
+        successResponse = FetchSchoolPayPaymentInstrumentsResponse.builder()
+                .status("SUCCESS")
+                .paymentInstruments(Arrays.asList(
+                    PaymentInstrument.builder()
+                        .id("CARD123")
+                        .type("CREDIT_CARD")
+                        .last4Digits("4242")
+                        .build(),
+                    PaymentInstrument.builder()
+                        .id("BANK456")
+                        .type("BANK_ACCOUNT")
+                        .accountNumber("****5678")
+                        .build()
+                ))
+                .build();
+    }
+
+    @Nested
+    @DisplayName("fetchSchoolPayPaymentInstruments Tests")
+    class FetchSchoolPayPaymentInstrumentsTests {
+
+        @Test
+        @DisplayName("Should successfully fetch payment instruments with valid request")
+        void shouldSuccessfullyFetchPaymentInstruments() throws Exception {
+            // Arrange
+            when(schoolPaymentService.fetchPaymentInstruments(any(), any()))
+                .thenReturn(successResponse);
+
+            // Act & Assert
+            mockMvc.perform(post("/services/school-payment/v1/options")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(new HttpHeaders(headers))
+                    .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.status").value("SUCCESS"))
+                .andExpect(jsonPath("$.paymentInstruments").isArray())
+                .andExpect(jsonPath("$.paymentInstruments.length()").value(2))
+                .andExpect(jsonPath("$.paymentInstruments[0].id").value("CARD123"))
+                .andExpect(jsonPath("$.paymentInstruments[0].type").value("CREDIT_CARD"));
+
+            verify(schoolPaymentService, times(1))
+                .fetchPaymentInstruments(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should return 400 when request is missing required fields")
+        void shouldReturn400WhenRequestIsMissingRequiredFields() throws Exception {
+            // Arrange
+            FetchSchoolPayPaymentInstrumentsRequest invalidRequest = FetchSchoolPayPaymentInstrumentsRequest.builder()
+                .schoolId(null)  // Missing required field
+                .studentId("STUDENT456")
+                .build();
+
+            // Act & Assert
+            mockMvc.perform(post("/services/school-payment/v1/options")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(new HttpHeaders(headers))
+                    .content(objectMapper.writeValueAsString(invalidRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors").exists());
+
+            verify(schoolPaymentService, never())
+                .fetchPaymentInstruments(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should return 401 when authorization header is missing")
+        void shouldReturn401WhenAuthorizationHeaderIsMissing() throws Exception {
+            // Arrange
+            MultiValueMap<String, String> headersWithoutAuth = new LinkedMultiValueMap<>(headers);
+            headersWithoutAuth.remove("Authorization");
+
+            // Act & Assert
+            mockMvc.perform(post("/services/school-payment/v1/options")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(new HttpHeaders(headersWithoutAuth))
+                    .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isUnauthorized());
+
+            verify(schoolPaymentService, never())
+                .fetchPaymentInstruments(any(), any());
+        }
+
+        @Test
+        @DisplayName("Should handle service unavailability gracefully")
+        void shouldHandleServiceUnavailabilityGracefully() throws Exception {
+            // Arrange
+            when(schoolPaymentService.fetchPaymentInstruments(any(), any()))
+                .thenThrow(new ServiceUnavailableException("Payment service is temporarily unavailable"));
+
+            // Act & Assert
+            mockMvc.perform(post("/services/school-payment/v1/options")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(new HttpHeaders(headers))
+                    .content(objectMapper.writeValueAsString(validRequest)))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.error").value("Payment service is temporarily unavailable"))
+                .andExpect(jsonPath("$.errorCode").value("SERVICE_UNAVAILABLE"));
+
+            verify(schoolPaymentService, times(1))
+                .fetchPaymentInstruments(any(), any());
+        }
+
+        @Test
+        @DisplayMapping("Should handle invalid currency code")
+        void shouldHandleInvalidCurrencyCode() throws Exception {
+            // Arrange
+            FetchSchoolPayPaymentInstrumentsRequest invalidCurrencyRequest = FetchSchoolPayPaymentInstrumentsRequest.builder()
+                .schoolId("SCHOOL123")
+                .studentId("STUDENT456")
+                .amount(1000.00)
+                .currency("INVALID")  // Invalid currency code
+                .build();
+
+            // Act & Assert
+            mockMvc.perform(post("/services/school-payment/v1/options")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(new HttpHeaders(headers))
+                    .content(objectMapper.writeValueAsString(invalidCurrencyRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Invalid currency code"))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_CURRENCY"));
+        }
+
+        @Test
+        @DisplayName("Should handle negative amount")
+        void shouldHandleNegativeAmount() throws Exception {
+            // Arrange
+            FetchSchoolPayPaymentInstrumentsRequest negativeAmountRequest = FetchSchoolPayPaymentInstrumentsRequest.builder()
+                .schoolId("SCHOOL123")
+                .studentId("STUDENT456")
+                .amount(-100.00)  // Negative amount
+                .currency("USD")
+                .build();
+
+            // Act & Assert
+            mockMvc.perform(post("/services/school-payment/v1/options")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(new HttpHeaders(headers))
+                    .content(objectMapper.writeValueAsString(negativeAmountRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Amount must be positive"))
+                .andExpect(jsonPath("$.errorCode").value("INVALID_AMOUNT"));
+        }
+
+        @Test
+        @DisplayName("Should handle unknown school ID")
+        void shouldHandleUnknownSchoolId() throws Exception {
+            // Arrange
+            when(schoolPaymentService.fetchPaymentInstruments(any(), any()))
+                .thenThrow(new ResourceNotFoundException("School not found"));
+
+            FetchSchoolPayPaymentInstrumentsRequest unknownSchoolRequest = FetchSchoolPayPaymentInstrumentsRequest.builder()
+                .schoolId("UNKNOWN_SCHOOL")
+                .studentId("STUDENT456")
+                .amount(1000.00)
+                .currency("USD")
+                .build();
+
+            // Act & Assert
+            mockMvc.perform(post("/services/school-payment/v1/options")
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .headers(new HttpHeaders(headers))
+                    .content(objectMapper.writeValueAsString(unknownSchoolRequest)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.error").value("School not found"))
+                .andExpect(jsonPath("$.errorCode").value("RESOURCE_NOT_FOUND"));
+        }
+    }
+}
