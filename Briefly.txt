@@ -1,777 +1,301 @@
-Certainly! Let's break down the code step by step:
+Doubts
 
-### Class Definition and Annotations
-```java
-@Component
-@Slf4j
-public class BillerServiceImpl implements BillerService {
-```
-- `@Component`: This annotation indicates that the class is a Spring component, making it eligible for component scanning and dependency injection.
-- `@Slf4j`: This annotation is from [Lombok](https://projectlombok.org/), which automatically generates a logger field (`log`) for logging purposes.
-- `public class BillerServiceImpl implements BillerService`: This class implements the `BillerService` interface, meaning it provides concrete implementations for the methods defined in the interface.
+BillPaymentControllerIT: package com.walmart.international.wallet.payment.app.integrationTest;
 
-### Fields and Dependencies
-```java
-private BillerDTOMapper billerDTOMapper = BillerDTOMapper.INSTANCE;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.walmart.international.wallet.payment.app.CommonUtil2;
+import com.walmart.international.wallet.payment.app.WPSTestLoader;
+import com.walmart.international.wallet.payment.app.auth.WPSAuthValidator;
+import com.walmart.international.wallet.payment.app.controller.impl.billpay.BillPaymentControllerImpl;
+import com.walmart.international.wallet.payment.app.service.BillPaymentService;
+import com.walmart.international.wallet.payment.core.config.ccm.BillPaymentConfiguration;
+import com.walmart.international.wallet.payment.core.constants.WPSConstants;
+import com.walmart.international.wallet.payment.core.exception.DataConstraintViolationException;
+import com.walmart.international.wallet.payment.core.exception.WPSErrorCodes;
+import com.walmart.international.wallet.payment.dto.request.billpay.*;
+import com.walmart.international.wallet.payment.dto.response.billpay.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.MockitoAnnotations;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.web.WebAppConfiguration;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.test.web.servlet.result.MockMvcResultHandlers;
+import org.springframework.test.web.servlet.result.MockMvcResultMatchers;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 
-@ManagedConfiguration
-private WalletPaymentServiceConfiguration walletPaymentServiceConfiguration;
+import java.util.Objects;
+import java.util.UUID;
 
-@Autowired
-private BillerCoreService billerCoreService;
-```
-- `billerDTOMapper`: An instance of `BillerDTOMapper` used for mapping entities to DTOs and vice versa.
-- `walletPaymentServiceConfiguration`: A configuration object managed by Spring.
-- `billerCoreService`: A core service that handles the main business logic related to billers. It is injected by Spring using `@Autowired`.
+import static com.walmart.international.wallet.payment.app.APIUrlConstants.*;
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.times;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultHandlers.print;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-### Initialization Method
-```java
-@PostConstruct
-public void init() {
-    billerCoreService.reloadCacheForBillerCategoryData(walletPaymentServiceConfiguration.getBillerCategoryVersions());
-}
-```
-- `@PostConstruct`: This annotation indicates that the `init` method should be called after the bean's properties have been initialized.
-- The `init` method reloads the cache for biller category data using the versions specified in the configuration.
+@ActiveProfiles("test")
+@SpringBootTest(classes = WPSTestLoader.class)
+@ExtendWith(MockitoExtension.class)
+@WebAppConfiguration
+@AutoConfigureMockMvc
+public class BillPaymentControllerIT {
+    private static final String INTEGRATION_TEST_FLOW = "IntegrationTestFlow";
+    final String SERVER_ERROR = "serverError";
+    final String CLIENT_ERROR = "clientError";
 
-### Method Implementations
-
-#### `getBillerCategories`
-```java
-@Override
-public BillerCategoriesResponse getBillerCategories(int billerCategoryVersion) {
-    return getBillerCategoriesMapFromCache(billerCategoryVersion);
-}
-
-private BillerCategoriesResponse getBillerCategoriesMapFromCache(int billerCategoryVersion) {
-    List<BillerCategory> billerCategoriesList;
-    Date billerCategoryDataLastUpdatedAt;
-
-    billerCategoriesList = billerCoreService.getBillerCategoriesList(billerCategoryVersion);
-    billerCategoryDataLastUpdatedAt = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
-
-    if (CollectionUtils.isNotEmpty(billerCategoriesList)) {
-        return BillerCategoriesResponse.builder()
-                .categories(billerDTOMapper.mapBillerCategoriesListToBillerCategoryDTOList(billerCategoriesList))
-                .billerCategoryDataLastUpdatedAt(billerCategoryDataLastUpdatedAt)
-                .build();
+    static {
+        System.setProperty(INTEGRATION_TEST_FLOW, String.valueOf(true));
     }
-    return BillerCategoriesResponse.builder()
-            .categories(new ArrayList<>())
-            .build();
-}
-```
-- `getBillerCategories`: Fetches biller categories for a given version.
-- `getBillerCategoriesMapFromCache`: Helper method that retrieves the biller categories from the cache and maps them to DTOs.
 
-#### `getPopularBillers`
-```java
-@Override
-public PopularBillersResponse getPopularBillers() throws BusinessValidationException {
-    List<Biller> popularBillersList = billerCoreService.getPopularBillers();
-    List<GetPopularBillersBillerDTO> popularBillersDTOList = billerDTOMapper.mapBillerEntityListToGetPopularBillersBillerDTOList(popularBillersList);
-    return PopularBillersResponse.builder().billers(popularBillersDTOList).build();
-}
-```
-- Fetches a list of popular billers and maps them to DTOs.
+    @Autowired
+    private MockMvc mockMvc;
 
-#### `getBillerById`
-```java
-@Override
-public BillerByIdResponse getBillerById(UUID billerId, String processorBillerId) throws ApplicationException {
-    Biller biller = billerCoreService.fetchAndCacheBillerData(billerId, processorBillerId);
-    return prepareBillerDataResponse(biller);
+    private ObjectMapper objectMapper;
+
+    @MockBean
+    private BillPaymentService billPaymentService;
+
+    @MockBean
+    private WPSAuthValidator wpsAuthValidator;
+
+    @Autowired
+    private BillPaymentControllerImpl billPaymentController;
+
+    @MockBean
+    private BillPaymentConfiguration billPaymentConfiguration;
+
+    private HttpHeaders httpHeaders;
+//
+//    private PayBillInitRequest payBillInitRequest;
+//    private CancelPayBillInitRequest cancelPayBillInitRequest;
+//    private ValidatePayBillInitRequest validatePayBillInitRequest;
+//    private ReconcilePendingBillPayTxnRequest reconcilePendingBillPayTxnRequest;
+
+    FetchBillPayPaymentInstrumentsRequest fetchBillPayPaymentInstrumentsRequest = new FetchBillPayPaymentInstrumentsRequest();
+    MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+    @BeforeEach
+    public void setup() {
+        MockitoAnnotations.openMocks(this);
+        objectMapper = new ObjectMapper();
+    }
+
+    @Test
+    public void testBillPaymentController_Success() throws Exception {
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+
+        // Arrange
+        //FetchBillPayPaymentInstrumentsRequest fetchBillPayPaymentInstrumentsRequest = new FetchBillPayPaymentInstrumentsRequest();
+        fetchBillPayPaymentInstrumentsRequest.setCustomerAccountId(UUID.randomUUID());
+
+        PayBillInitRequest payBillInitRequest = new PayBillInitRequest();
+        payBillInitRequest.setCustomerAccountId(UUID.randomUUID());
+
+        CancelPayBillInitRequest cancelPayBillInitRequest = new CancelPayBillInitRequest();
+        cancelPayBillInitRequest.setCustomerAccountId(UUID.randomUUID());
+
+        ValidatePayBillInitRequest validatePayBillInitRequest = new ValidatePayBillInitRequest();
+        validatePayBillInitRequest.setCustomerAccountId(UUID.randomUUID());
+
+        ReconcilePendingBillPayTxnRequest reconcilePendingBillPayTxnRequest = new ReconcilePendingBillPayTxnRequest();
+        reconcilePendingBillPayTxnRequest.setTxnId(UUID.randomUUID());
+
+        FetchBillPayPaymentInstrumentsResponse expectedfetchBillPayPaymentInstrumentsResponse = mock(FetchBillPayPaymentInstrumentsResponse.class);
+        FetchBillPayPaymentInstrumentsWithPreselectionResponse expectedfetchBillPayPaymentInstrumentsWithPreselectionResponse = mock(FetchBillPayPaymentInstrumentsWithPreselectionResponse.class);
+        PayBillInitResponse expectedpayBillInitResponse = mock(PayBillInitResponse.class);
+        ValidatePayBillInitResponse expectedvalidatePayBillInitResponse = mock(ValidatePayBillInitResponse.class);
+        ReconcilePendingBillPayTxnResponse expectedreconcilePendingBillPayTxnResponse = mock(ReconcilePendingBillPayTxnResponse.class);
+
+        when(billPaymentService.fetchBillPayPaymentInstruments(fetchBillPayPaymentInstrumentsRequest, headers)).thenReturn(expectedfetchBillPayPaymentInstrumentsResponse);
+        when(billPaymentService.fetchBillPayPaymentInstrumentsWithPreselection(fetchBillPayPaymentInstrumentsRequest, headers)).thenReturn(expectedfetchBillPayPaymentInstrumentsWithPreselectionResponse);
+        when(billPaymentService.payBillInit(payBillInitRequest, headers)).thenReturn(expectedpayBillInitResponse);
+        when(billPaymentService.validatePayBillInit(validatePayBillInitRequest, headers)).thenReturn(expectedvalidatePayBillInitResponse);
+//        when(billPaymentConfiguration.)
+        when(billPaymentService.reconcilePendingBillPayTxn(reconcilePendingBillPayTxnRequest, headers)).thenReturn(expectedreconcilePendingBillPayTxnResponse);
+
+        // Act
+        FetchBillPayPaymentInstrumentsResponse actualfetchBillPayPaymentInstrumentsResponse = billPaymentController.fetchBillPayPaymentInstruments(fetchBillPayPaymentInstrumentsRequest, headers);
+        FetchBillPayPaymentInstrumentsWithPreselectionResponse actualfetchBillPayPaymentInstrumentsWithPreselectionResponse = billPaymentController.fetchBillPayPaymentInstrumentsWithPreselection(fetchBillPayPaymentInstrumentsRequest, headers);
+        PayBillInitResponse actualpayBillInitResponse = billPaymentController.payBillInit(payBillInitRequest, headers);
+        ValidatePayBillInitResponse actualvalidatePayBillInitResponse = billPaymentController.validatePayBillInit(validatePayBillInitRequest, headers);
+        ReconcilePendingBillPayTxnResponse actualreconcilePendingBillPayTxnResponse = billPaymentController.reconcilePendingBillPayTxn(reconcilePendingBillPayTxnRequest, headers);
+
+//        mockMvc.perform(post(PAYBILL_INIT)
+//                .contentType(MediaType.APPLICATION_JSON)
+//                .content("{}"))
+//                .andExpect(status().isBadRequest());
+//
+////        mockMvc.perform(post(FETCH_BILLPAYMENT_INSTRUMENTS)
+////                        .contentType(MediaType.APPLICATION_JSON)
+////                        .content("{}"))
+////                .andExpect(status().isBadRequest());
+//
+//        mockMvc.perform(post(FETCH_BILLPAYMENT_INSTRUMENTS_WITH_PRESELECTION)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content("{}"))
+//                .andExpect(status().isBadRequest());
+//
+//        mockMvc.perform(post(CANCEL_PAYBILL_INIT)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content("{}"))
+//                .andExpect(status().isBadRequest());
+//
+//        mockMvc.perform(post(VALIDATE_PAYBILL_INIT)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content("{}"))
+//                .andExpect(status().isBadRequest());
+
+        // Assert
+        assertNotNull(actualfetchBillPayPaymentInstrumentsResponse);
+        assertNotNull(actualfetchBillPayPaymentInstrumentsWithPreselectionResponse);
+        assertNotNull(actualpayBillInitResponse);
+        assertNotNull(actualvalidatePayBillInitResponse);
+        assertNotNull(actualreconcilePendingBillPayTxnResponse);
+
+        WPSErrorCodes error = WPSErrorCodes.INVALID_REQUEST;
+
+        executeAndVerifyBillPayment(error, CLIENT_ERROR);
+
+        verify(wpsAuthValidator, times(2)).validateHeaderUserId(String.valueOf(fetchBillPayPaymentInstrumentsRequest.getCustomerAccountId()), headers);
+        verify(billPaymentService, times(1)).fetchBillPayPaymentInstruments(fetchBillPayPaymentInstrumentsRequest, headers);
+        verify(wpsAuthValidator, times(1)).validateHeaderUserId(String.valueOf(payBillInitRequest.getCustomerAccountId()), headers);
+        verify(wpsAuthValidator, times(1)).validateHeaderUserId(String.valueOf(validatePayBillInitRequest.getCustomerAccountId()), headers);
+        verify(billPaymentService, times(1)).reconcilePendingBillPayTxn(reconcilePendingBillPayTxnRequest, headers);
+
+
+    }
+
+//    private void executeAndVerifyBillPayment(WPSErrorCodes error, String errorType) throws Exception {
+//        MvcResult mvcResult =  mockMvc.perform(MockMvcRequestBuilders.post(FETCH_BILLPAYMENT_INSTRUMENTS)
+//                        .contentType(MediaType.APPLICATION_JSON)
+//                        .content(objectMapper.writeValueAsString(fetchBillPayPaymentInstrumentsRequest))
+//                        .headers(HttpHeaders.readOnlyHttpHeaders(headers))
+//                        .accept(MediaType.APPLICATION_JSON))
+//                .andExpect(MockMvcResultMatchers.status().isBadRequest()).andReturn();
+//
+//        MvcResult result = mockMvc.perform(asyncDispatch(mvcResult)).andDo(print())
+//                .andExpect(Objects.equals(errorType, SERVER_ERROR) ? status().isBadRequest() : status().isOk())
+//                .andExpect(jsonPath("$.errors[0].error_code").value(error.getErrorCode())).andReturn();
+//
+//        Exception ex = result.getResolvedException();
+//        String errorMessage = Objects.requireNonNull(ex).getMessage();
+//        assertInstanceOf(DataConstraintViolationException.class, result.getResolvedException());
+//        assertEquals(errorMessage, CommonUtil2.getErrorMessage(String.valueOf(error.getErrorCode()), error.getErrorMessage()));
+//
+//    }
+
+    private void executeAndVerifyBillPayment(WPSErrorCodes error, String errorType) throws Exception {
+        MvcResult mvcResult = mockMvc.perform(post(FETCH_BILLPAYMENT_INSTRUMENTS)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(fetchBillPayPaymentInstrumentsRequest))
+                        .headers(HttpHeaders.readOnlyHttpHeaders(headers))
+                        .accept(MediaType.APPLICATION_JSON)).andDo(print()).andExpect(request().asyncStarted())
+                .andExpect(MockMvcResultMatchers.status().isBadRequest()).andReturn();
+
+        MvcResult result = mockMvc.perform(asyncDispatch(mvcResult)).andDo(print())
+                .andExpect(Objects.equals(errorType, SERVER_ERROR) ? status().isBadRequest() : status().isOk())
+                .andExpect(jsonPath("$.errors[0].error_code").value(error.getErrorCode())).andReturn();
+
+        Exception ex = result.getResolvedException();
+        String errorMessage = Objects.requireNonNull(ex).getMessage();
+        assertInstanceOf(DataConstraintViolationException.class, result.getResolvedException());
+        assertEquals(errorMessage, CommonUtil2.getErrorMessage(String.valueOf(error.getErrorCode()), error.getErrorMessage()));
+
+    }
+
+    public HttpHeaders getAddressChangeRequestHeader(
+            FetchBillPayPaymentInstrumentsRequest request ) {
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.add(WPSConstants.PaymentInstrument.GIFTCARD, String.valueOf(request.getCustomerAccountId()));
+        return httpHeaders;
+    }
 }
 
-private BillerByIdResponse prepareBillerDataResponse(Biller biller) {
-    if (Objects.isNull(biller)) {
+………………………………..
+WPSErrorCodes: package com.walmart.international.wallet.payment.core.exception;
+
+import com.walmart.international.digiwallet.service.web.rest.exception.ExceptionConstant;
+import com.walmart.international.digiwallet.service.web.rest.exception.ExceptionTypes;
+import lombok.Getter;
+import org.springframework.http.HttpStatus;
+
+@Getter
+public enum WPSErrorCodes implements ExceptionConstant {
+
+    VALIDATION_FAILURE(1000, "Validation Failure", HttpStatus.BAD_REQUEST),
+    INVALID_REQUEST(400, "Validation Failure", HttpStatus.BAD_REQUEST),
+    PAYMENT_DETAILS_NOT_FOUND(10011, "Payment Details are not present for this request",
+            HttpStatus.BAD_REQUEST),
+    INVALID_TASK_DATA(10077, "Invalid Task Data", HttpStatus.INTERNAL_SERVER_ERROR);
+
+    private final int errorCode;
+    private final String errorMessage;
+    private final HttpStatus httpStatus;
+
+    WPSErrorCodes(int errorCode, String errorMessage, HttpStatus httpStatus) {
+        this.errorCode = errorCode;
+        this.errorMessage = errorMessage;
+        this.httpStatus = httpStatus;
+    }
+
+    @Override
+    public ExceptionTypes getExceptionType() {
         return null;
     }
-    BillerInformation billerInformation = billerDTOMapper.mapBillerInformation(biller);
-    List<BillerByIdDTO> billerByIdDTOS;
-    if (CollectionUtils.isNotEmpty(biller.getSubBillers())) {
-        billerByIdDTOS = billerDTOMapper.mapBillerEntitiesToDTO(biller.getSubBillers());
-    } else {
-        billerByIdDTOS = billerDTOMapper.mapBillerEntitiesToDTO(Collections.singletonList(biller));
+    @Override
+    public String getErrorCode() {
+        return "";
     }
-    return BillerByIdResponse.builder()
-            .billerInformation(billerInformation)
-            .billers(billerByIdDTOS)
-            .lastUpdatedAt(biller.getMaxUpdateTimestamp())
-            .build();
+    @Override
+    public HttpStatus getHttpStatus() {
+        return null;
+    }
+
 }
-```
-- `getBillerById`: Fetches biller data by ID and processor ID, then prepares the response.
-- `prepareBillerDataResponse`: Helper method that maps the biller entity to a response DTO.
 
-#### `getBillerDataUpdateInfo`
-```java
-@Override
-public BillerDataUpdateInfoResponse getBillerDataUpdateInfo(BillerDataUpdateInfoRequest billerDataUpdateInfoRequest) {
-    Set<UUID> billerIds = billerDataUpdateInfoRequest.getBillerIds();
 
-    Date billerCategoryDataLastUpdatedAt = billerCoreService.fetchBillerCategoryDataLastUpdatedAtTimestamp();
-    Date billerIncorrectSearchKeywordsLastUpdatedAt = billerCoreService.fetchBillerIncorrectSearchDataUpdateTimestamp();
-    Map<String, Object> billerDataLastUpdatedAtMap = billerCoreService.fetchBillerDataLastUpdatedAtMap(CollectionUtils.isNotEmpty(billerIds) ? new ArrayList<>(billerIds) : new ArrayList<>(), new ArrayList<>());
-    List<BillerPlanDetailUpdateInfo> billerPlanDetailUpdates = billerDTOMapper.mapBillerDataLastUpdatedAtMap(billerDataLastUpdatedAtMap);
+………………………………..
+APIUrlConstants.java: @NoArgsConstructor(access = AccessLevel.PRIVATE)
+public class APIUrlConstants {
+    //**************  v1 billPay/Biller  **************
 
-    return BillerDataUpdateInfoResponse.builder()
-            .billerCategoryDataLastUpdatedAt(billerCategoryDataLastUpdatedAt)
-            .billerPlanDetailUpdateInfoList(billerPlanDetailUpdates)
-            .billerIncorrectSearchKeywordsLastUpdatedAt(billerIncorrectSearchKeywordsLastUpdatedAt)
-            .build();
+    public static final String V1_BASE_URL = "/services/biller-data";
+    public static final String BILLER_CATEGORIES_URL = V1_BASE_URL + "/v1/biller/categories";
+    public static final String POPULAR_BILLER_URL = V1_BASE_URL + "/v1/biller/popular";
+    public static final String BILLER_DATA_UPDATE_INFO_URL = V1_BASE_URL + "/v1/update-info";
+    public static final String BILLER_INCORRECT_SEARCH_KEYWORDS_URL = V1_BASE_URL + "/incorrect-search-keywords";
+    public static final String EVICT_CACHE_FOR_BILLER_DATA_URL = V1_BASE_URL + "/v1/cache/evict";
+    public static final String RELOAD_CACHE_FOR_BILLER_DATA_URL = V1_BASE_URL + "/v1/cache/reload";
+    public static final String BILLER_BY_ID_URL = V1_BASE_URL + "/v1/biller/{billerId}";
+    public static final String BILLER_PROMOTIONS_URL = V1_BASE_URL + "/v1/biller/promotions";
+    public static final String UPDATE_BILLER_BEHAVIOUR_CODE_URL = V1_BASE_URL + "/v1/update/behaviour-code";
+
+    //**************  v1 billPay/BillPayment  **************
+    public static final String V1_BILLPAYMENT_BASE_URL = "/services/bill-payment";
+    public static final String FETCH_BILLPAYMENT_INSTRUMENTS = V1_BILLPAYMENT_BASE_URL + "/v1/options";
+    public static final String FETCH_BILLPAYMENT_INSTRUMENTS_WITH_PRESELECTION = V1_BILLPAYMENT_BASE_URL + "/v2/options";
+    public static final String PAYBILL_INIT = V1_BILLPAYMENT_BASE_URL + "/v1/init";
+    public static final String CANCEL_PAYBILL_INIT = V1_BILLPAYMENT_BASE_URL + "/v1/cancel-init";
+    public static final String VALIDATE_PAYBILL_INIT = V1_BILLPAYMENT_BASE_URL + "/v1/validate-init";
+
 }
-```
-- Fetches and returns information about biller data updates.
 
-#### `reloadCacheForBillerData`
-```java
-@Override
-public BillerDataCacheAlterResponse reloadCacheForBillerData(BillerDataCacheReloadRequest billerDataCacheReloadRequest) {
-    if (billerDataCacheReloadRequest.isBillerCategoryDataReloadRequired()) {
-        log.info("Cache reloading for biller category data started at {}", new Date());
-        billerCoreService.reloadCacheForBillerCategoryData(walletPaymentServiceConfiguration.getBillerCategoryVersions());
-        log.info("Cache reloading for biller category data ended at {}", new Date());
-    }
 
-    if (billerDataCacheReloadRequest.isBillerIncorrectSearchKeywordsCacheUpdateRequired()) {
-        log.info("Cache reloading for biller incorrect search data started at {}", new Date());
-        billerCoreService.reloadIncorrectSearchDataInCache();
-        log.info("Cache reloading for biller incorrect search data ended at {}", new Date());
-    }
-
-    Map<String, Set<String>> retryBillers = null;
-    if (CollectionUtils.isNotEmpty(billerDataCacheReloadRequest.getBillerIds()) || CollectionUtils.isNotEmpty(billerDataCacheReloadRequest.getProcessorBillerIds())) {
-        retryBillers = billerCoreService.reloadCacheForBillerData(billerDataCacheReloadRequest.getProcessorBillerIds(), billerDataCacheReloadRequest.getBillerIds());
-    }
-
-    return BillerDataCacheAlterResponse.builder()
-            .processorBillerIdsToRetry(Objects.nonNull(retryBillers) ? retryBillers.get(WPSConstants.Biller.RETRY_PROCESSOR_BILLER_IDS) : new HashSet<>())
-            .billerIdsToRetry((Objects.nonNull(retryBillers) ? retryBillers.get(WPSConstants.Biller.RETRY_BILLER_IDS) : new HashSet<>()))
-            .build();
-}
-```
-- Reloads the cache for biller data based on the request parameters.
-
-#### `evictCacheForBillerData`
-```java
-@Override
-public BillerDataCacheAlterResponse evictCacheForBillerData(BillerDataCacheEvictRequest billerDataCacheEvictRequest) {
-    List<String> processorBillerIdsToEvict;
-    List<UUID> billerIdsToEvict;
-
-    if (billerDataCacheEvictRequest.isEvictCacheForAllBillers()) {
-        processorBillerIdsToEvict = new ArrayList<>();
-        billerIdsToEvict = new ArrayList<>();
-        List<Tuple> billersToEvict = billerCoreService.getBillerIdsAndProcessorBillerIdsOfBillersWhoseDataIsCached();
-        billersToEvict.forEach(biller -> {
-            billerIdsToEvict.add(biller.get(0, UUID.class));
-            processorBillerIdsToEvict.add(biller.get(1, String.class));
-        });
-    } else {
-        billerIdsToEvict = CollectionUtils.isNotEmpty(billerDataCacheEvictRequest.getBillerIds()) ? new ArrayList<>(billerDataCacheEvictRequest.getBillerIds()) : new ArrayList<>();
-        processorBillerIdsToEvict = CollectionUtils.isNotEmpty(billerDataCacheEvictRequest.getProcessorBillerIds()) ? new ArrayList<>(billerDataCacheEvictRequest.getProcessorBillerIds()) : new ArrayList<>();
-    }
-    Map<String, Set<String>> retryBillers = null;
-    if (CollectionUtils.isNotEmpty(billerIdsToEvict) || CollectionUtils.isNotEmpty(processorBillerIdsToEvict)) {
-        retryBillers = billerCoreService.evictCacheForBillerAndUpdateTimestampData(billerIdsToEvict, processorBillerIdsToEvict);
-    }
-    return BillerDataCacheAlterResponse.builder()
-            .processorBillerIdsToRetry(Objects.nonNull(retryBillers) ? retryBillers.get(WPSConstants.Biller.RETRY_PROCESSOR_BILLER_IDS) : new HashSet<>())
-            .billerIdsToRetry(Objects.nonNull(retryBillers) ? retryBillers.get(WPSConstants.Biller.RETRY_BILLER_IDS) : new HashSet<>())
-            .build();
-}
-```
-- Evicts the cache for biller data based on the request parameters.
-
-#### `getBillerIncorrectSearchKeywords`
-```java
-@Override
-public BillerIncorrectSearchKeywordsResponse getBillerIncorrectSearchKeywords() throws ApplicationException {
-    Map<String, List<String>> billerIncorrectSearchKeywordsMap;
-    Date billerIncorrectSearchKeywordsLastUpdatedAt;
-
-    billerIncorrectSearchKeywordsMap = billerCoreService.fetchBillerIncorrectSearchKeywordMap();
-    billerIncorrectSearchKeywordsLastUpdatedAt = billerCoreService.fetchBillerIncorrectSearchDataUpdateTimestamp();
-
-    if (!billerIncorrectSearchKeywordsMap.isEmpty()) {
-        return BillerIncorrectSearchKeywordsResponse.builder()
-                .billerIncorrectSearchKeywords(billerIncorrectSearchKeywordsMap)
-                .billerIncorrectSearchKeywordsLastUpdatedAt(billerIncorrectSearchKeywordsLastUpdatedAt)
-                .build();
-    }
-    return BillerIncorrectSearchKeywordsResponse.builder()
-            .billerIncorrectSearchKeywords(new HashMap<>())
-            .build();
-}
-```
-- Fetches and returns incorrect search keywords for billers.
-
-#### `updateBillerBehaviourCode`
-```java
-@Override
-public Map<String, String> updateBillerBehaviourCode(BillerBehaviourCodeUpdateRequest billerBehaviourCodeUpdateRequest){
-    if(billerBehaviourCodeUpdateRequest.isUpdateBehaviourCodeForAllBillers()) {
-        return billerCoreService.updateBehaviourCodeForAllBillersAndCreateBillerIdToBBCMap();
-    } else if (CollectionUtils.isNotEmpty(billerBehaviourCodeUpdateRequest.getBillerIds())) {
-        return billerCoreService.updateBehaviourCodeForGivenBillerIdsAndCreateBillerIdToBBCMap(billerBehaviourCodeUpdateRequest.getBillerIds());
-    }
-    return Collections.emptyMap();
-}
-```
-- Updates the behavior code for billers based on the request parameters.
-
-### Summary
-This class, `BillerServiceImpl`, is a Spring component that implements the `BillerService` interface. It provides various methods to interact with biller data, including fetching categories, popular billers, biller details by ID, and updating or evicting cache data. It uses dependency injection to access core services and configurations, and it leverages a DTO mapper for converting entities to DTOs. The class also includes logging for tracking the execution of cache operations.
-...............................................................................
-Certainly! Let's break down the code step by step:
-
-### Class Definition
-```java
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class BillerPromotion {
-```
-- **@Data**: This is a [Lombok](https://projectlombok.org/) annotation that generates boilerplate code such as getters, setters, `toString()`, `equals()`, and `hashCode()` methods.
-- **@Builder**: Another [Lombok](https://projectlombok.org/) annotation that provides a builder pattern for the class, making it easier to create instances of the class.
-- **@NoArgsConstructor**: Generates a no-argument constructor.
-- **@AllArgsConstructor**: Generates a constructor with one argument for each field in the class.
-
-### Fields
-```java
-    UUID campaignId;
-    String description;
-    String promotionText;
-    //TODO should be Date
-    String startDate;
-    String endDate;
-```
-- **campaignId**: A unique identifier for the campaign, represented as a [`UUID`](https://docs.oracle.com/javase/8/docs/api/java/util/UUID.html).
-- **description**: A textual description of the promotion.
-- **promotionText**: The text that will be used to promote the campaign.
-- **startDate**: The start date of the promotion, currently represented as a `String`. The comment `//TODO should be Date` suggests that this should ideally be a [`Date`](https://docs.oracle.com/javase/8/docs/api/java/util/Date.html) object.
-- **endDate**: The end date of the promotion, also currently represented as a `String`.
-
-### Comparator Inner Class
-```java
-    public static class BillerPromotionComparator implements Comparator<BillerPromotion> {
-        private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
-
-        @Override
-        public int compare(BillerPromotion o1, BillerPromotion o2) {
-            LocalDateTime startDate1 = LocalDateTime.parse(o1.getStartDate(), formatter);
-            LocalDateTime startDate2 = LocalDateTime.parse(o2.getStartDate(), formatter);
-            return startDate1.compareTo(startDate2);
-        }
-    }
-```
-- **BillerPromotionComparator**: A static inner class that implements the [`Comparator<BillerPromotion>`](https://docs.oracle.com/javase/8/docs/api/java/util/Comparator.html) interface. This allows for comparing two `BillerPromotion` objects based on their start dates.
-- **formatter**: A [`DateTimeFormatter`](https://docs.oracle.com/javase/8/docs/api/java/time/format/DateTimeFormatter.html) that is used to parse the start dates from `String` to `LocalDateTime`. The format used is `ISO_DATE_TIME`.
-- **compare method**: 
-  - Parses the `startDate` fields of the two `BillerPromotion` objects (`o1` and `o2`) into [`LocalDateTime`](https://docs.oracle.com/javase/8/docs/api/java/time/LocalDateTime.html) objects using the `formatter`.
-  - Compares the two `LocalDateTime` objects.
-  - Returns the result of the comparison (`startDate1.compareTo(startDate2)`), which will be:
-    - A negative integer if `startDate1` is before `startDate2`.
-    - Zero if `startDate1` is equal to `startDate2`.
-    - A positive integer if `startDate1` is after `startDate2`.
-
-### Summary
-This class represents a promotional campaign with various attributes like `campaignId`, `description`, `promotionText`, `startDate`, and `endDate`. It also includes a static inner class `BillerPromotionComparator` to compare two `BillerPromotion` objects based on their start dates. The `startDate` and `endDate` fields are currently `String` but should ideally be `Date` objects for better type safety and easier date manipulation.
-        
-...............................................................................
-Certainly! Let's break down the code line by line and explain the logic:
-
-### Class and Dependency Injection
-
-```java
-@Service
-public class BillerPromotionCoreService {
-```
-- `@Service`: This annotation indicates that the class is a service component in the [Spring framework](https://spring.io/projects/spring-boot), making it eligible for Spring's component scanning to detect and register it as a Spring bean.
-- `public class BillerPromotionCoreService`: This is the class declaration for `BillerPromotionCoreService`.
-
-```java
-    @Autowired
-    private CampaignServiceClient campaignServiceClient;
-
-    @Autowired
-    private BillerCoreService billerCoreService;
-```
-- `@Autowired`: This annotation is used for automatic dependency injection. Spring will inject the required beans into these fields.
-- `private CampaignServiceClient campaignServiceClient`: Declares a dependency on `CampaignServiceClient`.
-- `private BillerCoreService billerCoreService`: Declares a dependency on `BillerCoreService`.
-
-```java
-    private static final BillerPromotionMapper billerPromotionMappper = BillerPromotionMapper.INSTANCE;
-```
-- `private static final BillerPromotionMapper billerPromotionMappper = BillerPromotionMapper.INSTANCE;`: This initializes a static final instance of `BillerPromotionMapper` using its `INSTANCE` field, which is likely a singleton.
-
-### Main Method
-
-```java
-    public Map<String, List<BillerPromotion>> getAllPromotionsForPromotionCategory(String billerCategoryIds, String processorBillerIds, int billerCategoryVersion) {
-```
-- `public Map<String, List<BillerPromotion>> getAllPromotionsForPromotionCategory(...)`: This is a public method that returns a map where the key is a `String` and the value is a list of `BillerPromotion` objects. It takes three parameters: `billerCategoryIds`, `processorBillerIds`, and `billerCategoryVersion`.
-
-```java
-        validatePromotionsRequest(billerCategoryIds, processorBillerIds);
-```
-- `validatePromotionsRequest(billerCategoryIds, processorBillerIds);`: This method call validates the input parameters to ensure they are not both null.
-
-```java
-        List<BillerCategory> billerCategoriesList;
-        billerCategoriesList = billerCoreService.getBillerCategoriesList(billerCategoryVersion);
-```
-- `List<BillerCategory> billerCategoriesList;`: Declares a list to hold `BillerCategory` objects.
-- `billerCategoriesList = billerCoreService.getBillerCategoriesList(billerCategoryVersion);`: Calls a method on `billerCoreService` to get a list of `BillerCategory` objects based on the provided version.
-
-```java
-        Map<String, List<PromotionMappingDTO>> billerPromotionsMapFromCaas = campaignServiceClient.getAllPromotions(WPSConstants.Promotions.IS_PROMOTIONS_FROM_CACHE);
-        Map<String, List<BillerPromotion>> promotionsMap = new HashMap<>();
-```
-- `Map<String, List<PromotionMappingDTO>> billerPromotionsMapFromCaas = campaignServiceClient.getAllPromotions(WPSConstants.Promotions.IS_PROMOTIONS_FROM_CACHE);`: Calls a method on `campaignServiceClient` to get a map of promotions from an external service.
-- `Map<String, List<BillerPromotion>> promotionsMap = new HashMap<>();`: Initializes an empty map to hold the final promotions.
-
-```java
-        processPromotionsForBillerCategoryIds(billerCategoryIds, billerCategoriesList, billerPromotionsMapFromCaas, promotionsMap);
-        processPromotionsForBillerIds(processorBillerIds, billerPromotionsMapFromCaas, promotionsMap);
-        return promotionsMap;
-    }
-```
-- `processPromotionsForBillerCategoryIds(...)`: Processes promotions for the given biller category IDs.
-- `processPromotionsForBillerIds(...)`: Processes promotions for the given processor biller IDs.
-- `return promotionsMap;`: Returns the final map of promotions.
-
-### Helper Methods
-
-```java
-    private void processPromotionsForBillerCategoryIds(String billerCategoryIds, List<BillerCategory> billerCategoriesList,
-                                                       Map<String, List<PromotionMappingDTO>> promotionMapFromCaas,
-                                                       Map<String, List<BillerPromotion>> promotionsMap) {
-```
-- `private void processPromotionsForBillerCategoryIds(...)`: This method processes promotions for the given biller category IDs.
-
-```java
-        if (Objects.nonNull(billerCategoryIds)) {
-            List<UUID> categoryIds;
-            categoryIds = validateBillerCategoryIds(billerCategoryIds);
-```
-- `if (Objects.nonNull(billerCategoryIds))`: Checks if `billerCategoryIds` is not null.
-- `List<UUID> categoryIds;`: Declares a list to hold UUIDs.
-- `categoryIds = validateBillerCategoryIds(billerCategoryIds);`: Validates and converts the `billerCategoryIds` string to a list of UUIDs.
-
-```java
-            for (UUID billerCategoryId : categoryIds) {
-                BillerCategory billerCategory = null;
-                if (!billerCategoriesList.isEmpty()) {
-                    billerCategory = billerCategoriesList.stream()
-                            .filter(i -> i.getId().toString().equalsIgnoreCase(billerCategoryId.toString()))
-                            .findFirst().orElse(null);
-                }
-```
-- `for (UUID billerCategoryId : categoryIds)`: Iterates over each biller category ID.
-- `BillerCategory billerCategory = null;`: Initializes a `BillerCategory` variable.
-- `if (!billerCategoriesList.isEmpty())`: Checks if the list of biller categories is not empty.
-- `billerCategory = billerCategoriesList.stream()...`: Finds the matching `BillerCategory` from the list.
-
-```java
-                if (Objects.nonNull(billerCategory)) {
-                    List<Biller> billers = billerCategory.getBillers();
-                    if (Objects.nonNull(billers)) {
-                        billers.forEach(biller -> createPromotionsResponse(promotionMapFromCaas, promotionsMap, String.valueOf(biller.getProcessorBillerId())));
-                    }
-                } else {
-                    String msg = String.format("No biller category record found for billerCategoryId[%s]", billerCategoryId);
-                    throw new BusinessValidationException(ErrorConstants.Promotions.INVALID_BILLER_CATEGORY_ID, msg);
-                }
-            }
-        }
-    }
-```
-- `if (Objects.nonNull(billerCategory))`: Checks if the `BillerCategory` is not null.
-- `List<Biller> billers = billerCategory.getBillers();`: Gets the list of billers from the biller category.
-- `if (Objects.nonNull(billers))`: Checks if the list of billers is not null.
-- `billers.forEach(biller -> createPromotionsResponse(...));`: Iterates over each biller and creates a promotions response.
-- `else`: If no matching `BillerCategory` is found, throws a `BusinessValidationException`.
-
-```java
-    private void processPromotionsForBillerIds(String processorBillerIds, Map<String, List<PromotionMappingDTO>> promotionMapFromCaas, Map<String, List<BillerPromotion>> promotionsMap) {
-        if (Objects.nonNull(processorBillerIds)) {
-            String[] billersList = processorBillerIds.split(",");
-            for (String billerId : billersList) {
-                createPromotionsResponse(promotionMapFromCaas, promotionsMap, billerId);
-            }
-        }
-    }
-```
-- `private void processPromotionsForBillerIds(...)`: This method processes promotions for the given processor biller IDs.
-- `if (Objects.nonNull(processorBillerIds))`: Checks if `processorBillerIds` is not null.
-- `String[] billersList = processorBillerIds.split(",");`: Splits the `processorBillerIds` string into an array.
-- `for (String billerId : billersList)`: Iterates over each biller ID.
-- `createPromotionsResponse(...)`: Creates a promotions response for each biller ID.
-
-```java
-    private void validatePromotionsRequest(String billerCategoryIds, String processorBillerIds) {
-        if (Objects.isNull(billerCategoryIds) && Objects.isNull(processorBillerIds))
-            throw new DataValidationException(ErrorConstants.Promotions.BILLER_ID_NULL);
-    }
-```
-- `private void validatePromotionsRequest(...)`: This method validates the input parameters.
-- `if (Objects.isNull(billerCategoryIds) && Objects.isNull(processorBillerIds))`: Checks if both `billerCategoryIds` and `processorBillerIds` are null.
-- `throw new DataValidationException(...)`: Throws a `DataValidationException` if both parameters are null.
-
-```java
-    private List<UUID> validateBillerCategoryIds(String billerCategoryIds) {
-        String[] categoryIds = billerCategoryIds.split(",");
-        List<UUID> validatedIds = new ArrayList<>();
-        for (String billerCategoryId : categoryIds) {
-            try {
-                UUID id = UUID.fromString(billerCategoryId);
-                validatedIds.add(id);
-            } catch (Exception e) {
-                String msg = String.format("billerCategoryId[%s] is not a valid UUID", billerCategoryId);
-                throw new ProcessingException(ErrorConstants.Promotions.INVALID_BILLER_CATEGORY_ID, msg);
-            }
-        }
-        return validatedIds;
-    }
-```
-- `private List<UUID> validateBillerCategoryIds(...)`: This method validates and converts the `billerCategoryIds` string to a list of UUIDs.
-- `String[] categoryIds = billerCategoryIds.split(",");`: Splits the `billerCategoryIds` string into an array.
-- `List<UUID> validatedIds = new ArrayList<>();`: Initializes an empty list to hold validated UUIDs.
-- `for (String billerCategoryId : categoryIds)`: Iterates over each category ID.
-- `UUID id = UUID.fromString(billerCategoryId);`: Converts the string to a UUID.
-- `validatedIds.add(id);`: Adds the UUID to the list.
-- `catch (Exception e)`: Catches any exceptions during the conversion.
-- `throw new ProcessingException(...)`: Throws a `ProcessingException` if the conversion fails.
-
-```java
-    private void createPromotionsResponse(Map<String, List<PromotionMappingDTO>> promotionMapFromCaas, Map<String, List<BillerPromotion>> promotionsMap, String billerId) {
-        List<BillerPromotion> billerPromotionList = billerPromotionMappper.mapCaasPromotionResponsesToBillerPromotions(promotionMapFromCaas.get(billerId));
-        if (!billerPromotionList.isEmpty()) {
-            billerPromotionList.sort(new BillerPromotion.BillerPromotionComparator());
-            promotionsMap.put(billerId, billerPromotionList.subList(0, 1));
-        }
-    }
-}
-```
-- `private void createPromotionsResponse(...)`: This method creates a promotions response for a given biller ID.
-- `List<BillerPromotion> billerPromotionList = billerPromotionMappper.mapCaasPromotionResponsesToBillerPromotions(...)`: Maps the promotion responses to `BillerPromotion` objects.
-- `if (!billerPromotionList.isEmpty())`: Checks if the list of promotions is not empty.
-- `billerPromotionList.sort(new BillerPromotion.BillerPromotionComparator());`: Sorts the list of promotions.
-- `promotionsMap.put(billerId, billerPromotionList.subList(0, 1));`: Adds the first promotion to the map.
-
-In summary, this service class is responsible for fetching and processing promotions for given biller categories and processor biller IDs. It validates the input parameters, fetches necessary data from other services, processes the data, and returns a map of promotions.
-        
-...............................................................................
-This Java code defines a Spring Boot [REST controller](https://spring.io/projects/spring-boot) named `BillerControllerImpl` that implements the `BillerController` interface. The controller handles various HTTP requests related to biller services. Let's break down the code and explain its components and functionality:
-
-### Annotations
-- `@RestController`: This annotation indicates that the class is a REST controller, meaning it will handle HTTP requests and return JSON or XML responses.
-- `@Autowired`: This annotation is used for dependency injection. It tells Spring to automatically inject the required dependencies (services) into the controller.
-- `@ManagedConfiguration`: This annotation is not a standard Spring annotation. It might be a custom annotation used in your project for configuration purposes.
-
-### Dependencies
-- `BillerService billerService`: This service handles the core business logic related to billers.
-- `BillerPromotionService billerPromotionService`: This service handles the business logic related to biller promotions.
-- `WalletPaymentServiceConfiguration walletPaymentServiceConfiguration`: This configuration class likely contains settings related to wallet payment services.
-
-### Methods
-Each method in this controller corresponds to a specific endpoint that performs a particular action. Here are the methods and their purposes:
-
-1. **`getBillerCategories(int billerCategoryVersion)`**
-   - **Purpose**: Fetches biller categories based on the provided version.
-   - **Implementation**: Calls `billerService.getBillerCategories(billerCategoryVersion)` and returns the result.
-
-2. **`getPopularBillers()`**
-   - **Purpose**: Retrieves a list of popular billers.
-   - **Implementation**: Calls `billerService.getPopularBillers()` and returns the result.
-   - **Throws**: `ApplicationException` if an error occurs.
-
-3. **`getBillerById(UUID billerId, String processorBillerId)`**
-   - **Purpose**: Fetches details of a biller by its ID and processor biller ID.
-   - **Implementation**: Calls `billerService.getBillerById(billerId, processorBillerId)` and returns the result.
-   - **Throws**: `ApplicationException` if an error occurs.
-
-4. **`getBillerDataUpdateInfo(BillerDataUpdateInfoRequest billerDataUpdateInfoRequest)`**
-   - **Purpose**: Retrieves information about biller data updates.
-   - **Implementation**: Calls `billerService.getBillerDataUpdateInfo(billerDataUpdateInfoRequest)` and returns the result.
-
-5. **`reloadCacheForBillerData(BillerDataCacheReloadRequest billerDataCacheReloadRequest)`**
-   - **Purpose**: Reloads the cache for biller data.
-   - **Implementation**: Calls `billerService.reloadCacheForBillerData(billerDataCacheReloadRequest)` and returns the result.
-   - **Throws**: `ApplicationException` if an error occurs.
-
-6. **`evictCacheForBillerData(BillerDataCacheEvictRequest billerDataCacheEvictRequest)`**
-   - **Purpose**: Evicts the cache for biller data.
-   - **Implementation**: Calls `billerService.evictCacheForBillerData(billerDataCacheEvictRequest)` and returns the result.
-
-7. **`getBillerPromotions(String billerCategoryIds, String processorBillerIds)`**
-   - **Purpose**: Retrieves promotions for billers based on category IDs and processor biller IDs.
-   - **Implementation**: Calls `billerPromotionService.getBillerPromotions(billerCategoryIds, processorBillerIds, walletPaymentServiceConfiguration.getBillerCategoryVersionForPromotions())` and returns the result.
-
-8. **`getBillerIncorrectSearchKeywords()`**
-   - **Purpose**: Retrieves incorrect search keywords related to billers.
-   - **Implementation**: Calls `billerService.getBillerIncorrectSearchKeywords()` and returns the result.
-   - **Throws**: `ApplicationException` if an error occurs.
-
-### Summary
-This controller acts as an intermediary between HTTP requests and the business logic encapsulated in the services (`BillerService` and `BillerPromotionService`). It provides various endpoints to interact with biller-related data, such as fetching biller categories, popular billers, biller details, updating cache, and retrieving promotions. The controller uses dependency injection to obtain the necessary services and configurations, ensuring a clean separation of concerns and making the code more modular and testable.
-
-...............................................................................
-Certainly! Let's break down the `BillerCoreService` class and explain the logic behind each method in detail.
-
-### Class Overview
-
-The `BillerCoreService` class is a Spring service that handles various operations related to billers, such as fetching and caching biller data, managing biller categories, and handling incorrect search keywords. It uses several repositories and a cache client (`wmClient`) to perform these operations.
-
-### Dependencies
-
-- **BillerRepository**: Interacts with the database to fetch biller data.
-- **WmClient**: A cache client used to store and retrieve data from a cache.
-- **BillerCategoryVersionMappingRepository**: Interacts with the database to fetch biller category version mappings.
-- **BillerSearchRepository**: Interacts with the database to fetch biller search data.
-- **BillerMapper**: A mapper to convert between different biller-related data objects.
-
-### Methods
-
-#### 1. `fetchAndCacheBillerData(String processorBillerId)`
-
-This method fetches and caches biller data based on the `processorBillerId`. It delegates the call to the overloaded method `fetchAndCacheBillerData(UUID billerId, String processorBillerId)` with `billerId` as `null`.
-
-#### 2. `fetchAndCacheBillerData(UUID billerId, String processorBillerId)`
-
-This method fetches and caches biller data based on either `billerId` or `processorBillerId`.
-
-- **Cache Keys**: It constructs cache keys for storing biller data and the last updated timestamp.
-- **Fetch from Cache**: It first tries to fetch the biller data from the cache using the constructed keys.
-- **Fetch from DB**: If the data is not found in the cache, it fetches the data from the database using `getBillerDO`.
-- **Prepare Biller**: It prepares a `Biller` object from the fetched `BillerDO`.
-- **Cache Data**: It caches the fetched and prepared biller data and the last updated timestamp.
-
-#### 3. `fetchBillerDataFromCache(String billerDataCacheKeyUUID, String billerDataCacheKey)`
-
-This private method fetches biller data from the cache using the provided cache keys.
-
-- **Cache Fetch**: It tries to fetch the data from the cache using the provided keys and logs the result.
-- **Error Handling**: It handles any exceptions that occur during the cache fetch operation.
-
-#### 4. `prepareBillerFromDO(BillerDO billerDO)`
-
-This private method prepares a `Biller` object from a `BillerDO` object.
-
-- **Mapping**: It uses the `BillerMapper` to map the `BillerDO` to a `Biller` object.
-- **Set Additional Data**: It sets additional data such as bill plans, sub-billers, and the maximum update timestamp.
-
-#### 5. `getBillerDO(UUID billerId, String processorBillerId)`
-
-This private method fetches a `BillerDO` from the database based on either `billerId` or `processorBillerId`.
-
-- **Fetch by Biller ID**: If `billerId` is provided, it fetches the data using `billerRepository.getByBillerIdAndEnabled`.
-- **Fetch by Processor Biller ID**: If `processorBillerId` is provided, it fetches the data using `billerRepository.getByProcessorBillerIdAndEnabled`.
-- **Error Handling**: It handles various exceptions that may occur during the database fetch operation.
-
-#### 6. `getBillerCategoriesList(Integer billerCategoryVersion)`
-
-This method fetches a list of biller categories for a given version.
-
-- **Cache Fetch**: It tries to fetch the data from the cache.
-- **Fetch from DB**: If the data is not found in the cache, it fetches the data from the database using `fetchAndCacheBillerCategoriesMap`.
-
-#### 7. `fetchAndCacheBillerCategoriesMap(List<Integer> billerCategoryVersions)`
-
-This private method fetches and caches biller categories for the given versions.
-
-- **Fetch from DB**: It fetches the data from the database using `billerCategoryVersionMappingRepository.getBillerCategoriesWithBillers`.
-- **Mapping**: It maps the fetched data to a list of `BillerCategory` objects.
-- **Cache Data**: It caches the fetched data.
-
-#### 8. `mapBillerVersionToBillerCategories(List<BillerCategory> billerCategories)`
-
-This private method maps biller categories to their respective versions.
-
-- **Mapping**: It creates a map where the key is the biller category version and the value is a list of biller categories.
-
-#### 9. `fetchBillerCategoryDataLastUpdatedAtTimestamp()`
-
-This method fetches the last updated timestamp for biller category data.
-
-- **Cache Fetch**: It tries to fetch the timestamp from the cache.
-- **Fetch from DB**: If the timestamp is not found in the cache, it fetches the data from the database using `fetchAndCacheBillerCategoryDataUpdatedAtTimestamp`.
-
-#### 10. `fetchAndCacheBillerCategoryDataUpdatedAtTimestamp()`
-
-This private method fetches and caches the last updated timestamp for biller category data.
-
-- **Fetch from DB**: It fetches the data from the database using `billerCategoryVersionMappingRepository.getBillerCategoryDataUpdateTimestamp`.
-- **Cache Data**: It caches the fetched timestamp.
-
-#### 11. `fetchBillerDataLastUpdatedAtMap(List<UUID> billerIds, List<String> processorBillerIds)`
-
-This method fetches the last updated timestamps for biller data based on the provided biller IDs and processor biller IDs.
-
-- **Cache Fetch**: It tries to fetch the data from the cache.
-- **Fetch from DB**: If the data is not found in the cache, it fetches the data from the database using `fetchBillerDataLastUpdatedAtMapFromDB`.
-
-#### 12. `fetchBillerDataLastUpdatedAtMapFromCache(List<UUID> billerIds, List<String> processorBillerIds)`
-
-This private method fetches the last updated timestamps for biller data from the cache.
-
-- **Cache Fetch**: It tries to fetch the data from the cache using the provided keys.
-
-#### 13. `fetchBillerDataLastUpdatedAtMapFromDB(List<UUID> billerIds, List<String> processorBillerIds)`
-
-This private method fetches the last updated timestamps for biller data from the database.
-
-- **Fetch from DB**: It fetches the data from the database using `billerRepository.getBillersInfoByBillerId` or `billerRepository.getBillersInfoByProcessorBillerIds`.
-- **Cache Data**: It caches the fetched data.
-
-#### 14. `reloadCacheForBillerCategoryData(List<Integer> billerCategoryVersions)`
-
-This method reloads the cache for biller category data for the given versions.
-
-- **Fetch and Cache**: It fetches and caches the data using `fetchAndCacheBillerCategoriesMap` and `fetchAndCacheBillerCategoryDataUpdatedAtTimestamp`.
-
-#### 15. `reloadIncorrectSearchDataInCache()`
-
-This method reloads the cache for incorrect search data.
-
-- **Fetch and Cache**: It fetches and caches the data using `fetchAndCacheBillerIncorrectSearchKeywordMap` and `fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp`.
-
-#### 16. `reloadCacheForBillerData(Set<String> processorBillerIds, Set<UUID> billerIds)`
-
-This method reloads the cache for biller data for the given processor biller IDs and biller IDs.
-
-- **Fetch from DB**: It fetches the data from the database using `billerRepository.getBillersInfoByBillerId` or `billerRepository.getBillersInfoByProcessorBillerIds`.
-- **Evict Cache**: It evicts data from the cache for billers not present in the database.
-- **Cache Data**: It caches the fetched data.
-
-#### 17. `addBillersToCacheForGivenBiller(BillerDO billerDO, List<BillerDO> billersToCache)`
-
-This private method adds billers to the cache for the given biller.
-
-- **Check Conditions**: It checks various conditions to determine whether to add the biller to the cache.
-- **Add to Cache**: It adds the biller to the cache.
-
-#### 18. `evictDataFromCacheForBillersNotPresentInDB(List<UUID> billerIdsToEvictFromCache, List<String> processorBillerIdsToEvict)`
-
-This private method evicts data from the cache for billers not present in the database.
-
-- **Evict Cache**: It evicts the data from the cache using `deleteBillerfromCache`.
-
-#### 19. `deleteBillerfromCache(String keyPrefix)`
-
-This private method deletes biller data from the cache using the provided key prefix.
-
-- **Delete from Cache**: It deletes the data from the cache using the provided keys.
-
-#### 20. `reloadCacheForBillerAndUpdateTimestampData(List<BillerDO> billersToCacheUsingBillerId, List<BillerDO> billersToCacheUsingProcessorBillerId)`
-
-This private method reloads the cache for biller data and updates the timestamp data.
-
-- **Cache Data**: It caches the data using `addBillersToCacheToFutureList`.
-- **Retry Logic**: It handles retry logic for failed cache operations.
-
-#### 21. `addBillersToCacheToFutureList(BillerDO billerDO, String keyPrefix, List<OperationFuture> billerDataFutureList, List<OperationFuture> billerDataUpdatedAtTimestampFutureList)`
-
-This private method adds billers to the cache to a future list.
-
-- **Prepare Biller**: It prepares a `Biller` object from the `BillerDO`.
-- **Cache Data**: It caches the data using the provided keys.
-
-#### 22. `getPopularBillers()`
-
-This method fetches a list of popular billers.
-
-- **Fetch from DB**: It fetches the data from the database using `billerRepository.getPopularBillersAndSubBillers`.
-- **Mapping**: It maps the fetched data to a list of `Biller` objects.
-
-#### 23. `getBillerIdsAndProcessorBillerIdsOfBillersWhoseDataIsCached()`
-
-This method fetches the biller IDs and processor biller IDs of billers whose data is cached.
-
-- **Fetch from DB**: It fetches the data from the database using `billerRepository.getBillerIdsAndProcessorBillerIdsOfBillersWhoseDataIsCached`.
-
-#### 24. `evictCacheForBillerAndUpdateTimestampData(List<UUID> billerIdsToEvict, List<String> processorBillerIdsToEvict)`
-
-This method evicts the cache for biller data and updates the timestamp data.
-
-- **Evict Cache**: It evicts the data from the cache using `addBillersToEvictToFutureList`.
-- **Retry Logic**: It handles retry logic for failed cache operations.
-
-#### 25. `addBillersToEvictToFutureList(String keyPrefix, List<OperationFuture> billerDataFutureList, List<OperationFuture> billerDataUpdatedAtTimestampFutureList)`
-
-This private method adds billers to evict to a future list.
-
-- **Evict from Cache**: It evicts the data from the cache using the provided keys.
-
-#### 26. `fetchBillerIncorrectSearchKeywordMap()`
-
-This method fetches the incorrect search keyword map for billers.
-
-- **Cache Fetch**: It tries to fetch the data from the cache.
-- **Fetch from DB**: If the data is not found in the cache, it fetches the data from the database using `fetchAndCacheBillerIncorrectSearchKeywordMap`.
-
-#### 27. `fetchAndCacheBillerIncorrectSearchKeywordMap()`
-
-This private method fetches and caches the incorrect search keyword map for billers.
-
-- **Fetch from DB**: It fetches the data from the database using `billerSearchRepository.getAllEnabledBillerSearchDO`.
-- **Mapping**: It maps the fetched data to a map of incorrect search keywords.
-- **Cache Data**: It caches the fetched data.
-
-#### 28. `getBillerNamesFromBillerIncorrectMappingSet(List<BillerDO> billersDOList)`
-
-This private method gets the biller names from a list of `BillerDO` objects.
-
-- **Mapping**: It maps the `BillerDO` objects to a list of biller names.
-
-#### 29. `fetchBillerIncorrectSearchDataUpdateTimestamp()`
-
-This method fetches the last updated timestamp for incorrect search data.
-
-- **Cache Fetch**: It tries to fetch the timestamp from the cache.
-- **Fetch from DB**: If the timestamp is not found in the cache, it fetches the data from the database using `fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp`.
-
-#### 30. `fetchAndCacheBillerIncorrectSearchDataUpdateTimestamp()`
-
-This private method fetches and caches the last updated timestamp for incorrect search data.
-
-- **Fetch from DB**: It fetches the data from the database using `billerSearchRepository.getBillerIncorrectSearchDataUpdateTimestamp`.
-- **Cache Data**: It caches the fetched timestamp.
-
-#### 31. `updateBehaviourCodeForAllBillersAndCreateBillerIdToBBCMap()`
-
-This method updates the behavior code for all billers and creates a map of biller IDs to behavior codes.
-
-- **Fetch from DB**: It fetches all billers from the database using `billerRepository.findAll`.
-- **Update Behavior Code**: It updates the behavior code for each biller.
-- **Save to DB**: It saves the updated billers to the database.
-- **Create Map**: It creates a map of biller IDs to behavior codes.
-
-#### 32. `updateBehaviourCodeForGivenBillerIdsAndCreateBillerIdToBBCMap(Set<UUID> billerIds)`
-
-This method updates the behavior code for the given biller IDs and creates a map of biller IDs to behavior codes.
-
-- **Fetch from DB**: It fetches the billers from the database using `billerRepository.findAllById`.
-- **Update Behavior Code**: It updates the behavior code for each biller.
-- **Save to DB**: It saves the updated billers to the database.
-- **Create Map**: It creates a map of biller IDs to behavior codes.
-
-#### 33. `createBillerIdToBBCMap(List<BillerDO> billers)`
-
-This private method creates a map of biller IDs to behavior codes.
-
-- **Mapping**: It maps the `BillerDO` objects to a map of biller IDs to behavior codes.
-
-### Summary
-
-The `BillerCoreService` class is responsible for managing biller data, including fetching, caching, and updating biller information. It interacts with the database and a cache client to perform these operations efficiently. The class also handles various scenarios such as cache misses, data updates, and error handling to ensure the integrity and availability of biller data.
-
-...............................................................................
-...............................................................................
-...............................................................................
-...............................................................................
-...............................................................................
+………………………………..
+………………………………..
+………………………………..
+………………………………..
+………………………………..
