@@ -1,0 +1,84 @@
+@SpringBootTest(classes = SchoolerApplication.class)
+@AutoConfigureMockMvc
+public class SchoolerControllerIntegrationTest {
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Test
+    public void testAllEndpoints() throws Exception {
+        // Test getSchoolerCategories
+        mockMvc.perform(get("/services/schooler-data/v1/schooler/categories")
+                        .param("schoolerCategoryVersion", "1"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.categories").isArray());
+
+        // Test getPopularSchoolers
+        mockMvc.perform(get("/services/schooler-data/v1/schooler/popular"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.schoolers").isArray());
+
+        // Test getSchoolerById with PathVariable
+        UUID schoolerId = UUID.randomUUID(); // Example UUID, adjust as needed
+        mockMvc.perform(get("/services/schooler-data/v1/schooler/" + schoolerId))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.id").value(schoolerId.toString()));
+
+        // Test getSchoolerById with RequestParam
+        mockMvc.perform(get("/services/schooler-data/v1/schooler")
+                        .param("processorSchoolerId", "exampleProcessorId"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.processorSchoolerId").value("exampleProcessorId"));
+
+        // Test getSchoolerDataUpdateInfo
+        SchoolerDataUpdateInfoRequest updateInfoRequest = new SchoolerDataUpdateInfoRequest();
+        String updateInfoJson = objectMapper.writeValueAsString(updateInfoRequest);
+        mockMvc.perform(post("/services/schooler-data/v1/update-info")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(updateInfoJson))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.status").value("success")); // Adjust expectations
+
+        // Test reloadCacheForSchoolerData
+        SchoolerDataCacheReloadRequest reloadRequest = new SchoolerDataCacheReloadRequest();
+        String reloadJson = objectMapper.writeValueAsString(reloadRequest);
+        mockMvc.perform(put("/services/schooler-data/v1/cache/reload")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(reloadJson))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.status").value("success")); // Adjust expectations
+
+        // Test evictCacheForSchoolerData
+        SchoolerDataCacheEvictRequest evictRequest = new SchoolerDataCacheEvictRequest();
+        String evictJson = objectMapper.writeValueAsString(evictRequest);
+        mockMvc.perform(post("/services/schooler-data/v1/cache/evict")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(evictJson))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.status").value("success")); // Adjust expectations
+
+        // Test getSchoolerPromotions
+        mockMvc.perform(get("/services/schooler-data/v1/schooler/promotions")
+                        .param("schoolerCategoryIds", "1,2,3")
+                        .param("processorSchoolerIds", "exampleProcessorId"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.promotions").isArray());
+
+        // Test getSchoolerIncorrectSearchKeywords
+        mockMvc.perform(get("/services/schooler-data/v1/schooler/incorrect-search-keywords"))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.keywords").isArray());
+
+        // Test updateSchoolerBehaviourCode
+        SchoolerBehaviourCodeUpdateRequest behaviourCodeUpdateRequest = new SchoolerBehaviourCodeUpdateRequest();
+        String behaviourCodeUpdateJson = objectMapper.writeValueAsString(behaviourCodeUpdateRequest);
+        mockMvc.perform(post("/services/schooler-data/v1/update/behaviour-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(behaviourCodeUpdateJson))
+               .andExpect(status().isOk())
+               .andExpect(jsonPath("$.status").value("updated")); // Adjust expectations
+    }
+}
