@@ -1,0 +1,282 @@
+Bid
+
+Json:  {
+    "billerInformation": {
+        "billerId": "09a09584-2568-11eb-80ff-fa163e3d3c63",
+        "processorBillerId": "29866",
+        "displayName": "Bait",
+        "productDisplayName": "Recarga celular",
+        "imageURL": "https://cashi.walmart.com/Providers-Icons/PNG_NEW/Bait_080923.png",
+        "billerBehaviourCode": "BBC_1",
+        "termsAndConditions": "https:\/\/mibait.com\/tyc.html",
+        "information": "<p>Para más información visita <a href=\\\"https:\/\/mibait.com\/\\\">https:\/\/mibait.com\/<\/a><\/p>",
+        "disclaimer": "Todas las recargas incluyen: Llamadas (Nacionales y larga distancia a EUA y Canadá) SMS y navegación en redes sociales."
+    },
+    "billers": [
+        {
+            "billerId": "09a09584-2568-11eb-80ff-fa163e3d3c63",
+            "processorBillerId": "29866",
+            "displayName": "Bait",
+            "billerType": "Tiempo aire",
+            "billType": "phone_number",
+            "canCheckBalance": false,
+            "partialAcceptOnlyPesos": false,
+            "supportsPartialPayments": false,
+            "prepaid": true,
+            "billTypeValidation": {
+                "type": "phone_number",
+                "minDigits": 10,
+                "maxDigits": 10
+            },
+            "billPlans": [
+                {
+                    "plan": "Tiempo Aire",
+                    "billDetails": [
+                        {
+                            "billDetailId": "1befa3cb-cbd4-da41-a7c9-d03ec4063e3a",
+                            "amount": 30.00,
+                            "name": "Mi Bait 30",
+                            "description": "4,000 MB libres / 3 días. 250 Min en llamadas (MEX, EUA y CAN) y 125 SMS",
+                            "validity": "Válido por 3 días",
+                            "socialMediaIcons": [
+                                "WHATSAPP",
+                                "FACEBOOK",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "SNAPCHAT"
+                            ]
+                        },
+                        {
+                            "billDetailId": "3ce45496-3bbb-0e42-8069-cbc998fa6c1a",
+                            "amount": 50.00,
+                            "name": "Mi Bait 50",
+                            "description": "10,000 MB libres / 7 días. 1,000 Min en llamdas (MEX, EUA y CAN) y 250 SMS",
+                            "validity": "Válido por 7 días.",
+                            "socialMediaIcons": [
+                                "WHATSAPP",
+                                "FACEBOOK",
+                                "FACEBOOK MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "SNAPCHAT"
+                            ]
+                        },
+                        {
+                            "billDetailId": "bbec1666-1811-724e-a09b-dde9a1dce366",
+                            "amount": 60.00,
+                            "name": "Mi Bait 65",
+                            "description": "5,000 MB + 1,000 MB para Redes Sociales + 500 min en llamadas  y 250 SMS.",
+                            "validity": "Disfruta por 10 días."
+                        },
+                        {
+                            "billDetailId": "32a61fae-c417-b043-894f-1ea799a445cd",
+                            "amount": 100.00,
+                            "name": "Mi Bait 100",
+                            "description": "20,000 MB libres / 15 dias. 1,000 Min en llamadas (MEX, EUA y CAN) y 500 SMS",
+                            "validity": "Válido por 15 días.",
+                            "socialMediaIcons": [
+                                "WHATSAPP",
+                                "FACEBOOK",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "SNAPCHAT"
+                            ]
+                        },
+                        {
+                            "billDetailId": "c7cbb29a-18cc-184a-9376-d4a9682db5d4",
+                            "amount": 125.00,
+                            "name": "Mi Bait 125",
+                            "description": "20,000 MB libres + 2,000 MB libres de Redes Sociales / 20 dias. 1,000 Min en llamadas (MEX, EUA y CAN) y 500 SMS",
+                            "validity": "Válido por 20 días.",
+                            "socialMediaIcons": [
+                                "WHATSAPP",
+                                "FACEBOOK",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "SNAPCHAT"
+                            ]
+                        },
+                        {
+                            "billDetailId": "b016b81a-74d7-324c-9be8-44af6be11f6e",
+                            "amount": 200.00,
+                            "name": "Mi Bait 200",
+                            "description": "Internet Ilimitado / 30 días. 1,500 Min en llamadas (MEX, EUA y CAN) y 1,000 SMS",
+                            "validity": "Válido por 30 días.",
+                            "socialMediaIcons": [
+                                "WHATSAPP",
+                                "FACEBOOK",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "SNAPCHAT"
+                            ]
+                        },
+                        {
+                            "billDetailId": "91ba81d5-b764-1a43-988a-ead552a88235",
+                            "amount": 300.00,
+                            "name": "Mi Bait 300",
+                            "description": "Internet Ilimitado / 30 días. Comparte Internet 1,500 Min en llamadas (MEX, EUA y CAN) y 1,000 SMS",
+                            "validity": "Válido por 30 días.",
+                            "socialMediaIcons": [
+                                "WHATSAPP",
+                                "FACEBOOK",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "SNAPCHAT"
+                            ]
+                        },
+                        {
+                            "billDetailId": "14f0b2ed-b617-0649-b003-382dd37f0cc4",
+                            "amount": 110.00,
+                            "name": "Bait Recarga $110",
+                            "description": "Internet Portatil",
+                            "validity": "Válido por 30 días.",
+                            "socialMediaIcons": [
+                                "FACEBOOK",
+                                "WHATSAPP",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "TIKTOK"
+                            ]
+                        },
+                        {
+                            "billDetailId": "afc539b2-994b-0b48-addd-d6cd02d89d30",
+                            "amount": 210.00,
+                            "name": "Bait Recarga $210",
+                            "description": "Internet Portatil",
+                            "validity": "Válido por 30 días.",
+                            "socialMediaIcons": [
+                                "FACEBOOK",
+                                "WHATSAPP",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "TIKTOK"
+                            ]
+                        },
+                        {
+                            "billDetailId": "fe5679f4-ec33-b94d-b1df-5d04023f1e8c",
+                            "amount": 410.00,
+                            "name": "Bait Recarga $410",
+                            "description": "Internet Portatil",
+                            "validity": "Válido por 30 días.",
+                            "socialMediaIcons": [
+                                "FACEBOOK",
+                                "WHATSAPP",
+                                "MESSENGER",
+                                "TWITTER",
+                                "INSTAGRAM",
+                                "TIKTOK"
+                            ]
+                        }
+                    ]
+                }
+            ],
+            "inputType": "NUMERIC",
+            "inputPlaceholderText": "Número celular",
+            "topupCommission": "0.00"
+        }
+    ],
+    "lastUpdatedAt": "2024-08-21T13:22:22Z"
+} ………………….. BillerController.java  @RequestMapping("/services/biller-data")
+@Tag(name = "BillerController API", description = "APIs to perform Biller data related activities.")
+public interface BillerController {
+@GetMapping(value = {"/v1/biller/{billerId}", "/v1/biller"}, produces = "application/json")
+BillerByIdResponse getBillerById(@PathVariable(required = false) UUID billerId, @RequestParam(required = false) String processorBillerId) throws ApplicationException;
+
+} ……………………………… BillerByIdResponse.java: @Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class BillerByIdResponse implements Serializable {
+    private BillerInformation billerInformation;
+    //Contains the childBillers if it's a parent else, the biller itself.
+    private List<BillerByIdDTO> billers;
+    @JsonFormat(pattern = "yyyy-MM-dd'T'HH:mm:ss'Z'")
+    private LocalDateTime lastUpdatedAt;
+}
+………………………………
+BillerByDTO.java @Data
+@Builder
+@AllArgsConstructor
+@NoArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class BillerByIdDTO implements Serializable {
+    private UUID billerId;
+    private String processorBillerId;
+    private String displayName;
+    private String billerType;
+    private String billType;
+    private BigDecimal minAmount;
+    private BigDecimal maxAmount;
+    private String billerAccountNumber;
+    private Boolean canCheckBalance;
+    private Boolean partialAcceptOnlyPesos;
+    private Boolean supportsPartialPayments;
+    private Boolean prepaid;
+    private BillTypeValidation billTypeValidation;
+    private List<BillPlanDTO> billPlans;
+    private InputType inputType;
+    private String inputPlaceholderText;
+    private String topupCommission;
+}
+ ………………………………
+BillerPlanDTO.java @Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class BillPlanDTO implements Serializable {
+
+    private static final long serialVersionUID = 3141481046801479977L;
+
+    private String plan;
+
+    private List<BillDetailDTO> billDetails;
+}
+ ………………………………
+BillerDetailDTO.java
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class BillDetailDTO implements Serializable {
+
+    private static final long serialVersionUID = 1477933449112714282L;
+
+    private UUID billDetailId;
+
+    private BigDecimal amount;
+
+    private String name;
+
+    private String description;
+
+    private String validity;
+
+    private String[] socialMediaIcons;
+}
+ ……………………………… BillerControllerImpl.java @RestController
+public class BillerControllerImpl implements BillerController {
+
+    @Autowired
+    private BillerService billerService;
+
+@Override
+public BillerByIdResponse getBillerById(UUID billerId, String processorBillerId) throws ApplicationException {
+    return billerService.getBillerById(billerId, processorBillerId);
+}
+}
+………………………………
+BillerService.java public interface BillerService {
+BillerByIdResponse getBillerById(UUID billerId, String processorBillerId) throws ApplicationException;
+
+}
+………………………………
