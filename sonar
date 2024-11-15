@@ -1,0 +1,71 @@
+To integrate SonarQube with your project and generate test coverage reports in IntelliJ, you'll need to:
+
+Configure JaCoCo for Code Coverage:
+
+JaCoCo is the default tool used by Sonar to measure coverage. Add the following dependency in your pom.xml file under the <plugins> section:
+xml
+Copy code
+<build>
+    <plugins>
+        <!-- JaCoCo plugin for code coverage -->
+        <plugin>
+            <groupId>org.jacoco</groupId>
+            <artifactId>jacoco-maven-plugin</artifactId>
+            <version>0.8.8</version> <!-- Use latest version -->
+            <executions>
+                <execution>
+                    <goals>
+                        <goal>prepare-agent</goal>
+                    </goals>
+                </execution>
+                <!-- Generate coverage report after tests -->
+                <execution>
+                    <id>report</id>
+                    <phase>test</phase>
+                    <goals>
+                        <goal>report</goal>
+                    </goals>
+                </execution>
+            </executions>
+        </plugin>
+    </plugins>
+</build>
+Add SonarQube Plugin:
+
+Add the SonarQube plugin to allow Maven to send coverage data to Sonar. Add this in your pom.xml file as well:
+xml
+Copy code
+<build>
+    <plugins>
+        <!-- SonarQube plugin -->
+        <plugin>
+            <groupId>org.sonarsource.scanner.maven</groupId>
+            <artifactId>sonar-maven-plugin</artifactId>
+            <version>3.9.1.2184</version> <!-- Use the latest version -->
+        </plugin>
+    </plugins>
+</build>
+Configure Sonar Properties:
+
+Add a sonar-project.properties file in the root directory of your project with the following settings:
+properties
+Copy code
+sonar.projectKey=your_project_key
+sonar.host.url=http://localhost:9000  # URL where SonarQube is running
+sonar.login=your_sonar_token  # Your SonarQube token
+sonar.sources=src/main/java
+sonar.tests=src/test/java
+sonar.java.binaries=target/classes
+sonar.jacoco.reportPaths=target/site/jacoco/jacoco.xml
+Generate Coverage Report:
+
+Run the following Maven command to generate the report and push the coverage to SonarQube:
+bash
+Copy code
+mvn clean verify sonar:sonar
+Install and Run SonarQube:
+
+Download SonarQube from SonarQube's official site.
+Start SonarQube by navigating to the bin directory within SonarQube and running the appropriate script (StartSonar.bat for Windows, StartSonar.sh for Linux/Mac).
+Log in to the SonarQube dashboard (default login: admin / admin), and set up your project token to use with sonar.login.
+After these steps, you should see the coverage report in your SonarQube dashboard. Let me know if you need help with any specific step!
