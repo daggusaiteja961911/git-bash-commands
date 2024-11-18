@@ -1,0 +1,1052 @@
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+public class BillProcessorServiceImplTest {
+    // Successfully retrieve transaction details with valid cashiOrderId and authKeyVersion
+    @Test
+    public void test_get_txn_success() {
+        BillProcessorCoreService coreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", coreService);
+    
+        PayBillResponse mockResponse = new PayBillResponse();
+        when(coreService.getTxn("validOrderId", 1)).thenReturn(mockResponse);
+    
+        ResponseEntity<PayBillResponse> response = service.getTxn("validOrderId", 1);
+    
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(mockResponse, response.getBody());
+    }
+
+    // Successfully retrieve account details
+    @Test
+    public void test_get_account_success() {
+        BillProcessorCoreService coreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", coreService);
+    
+        GetAccountResponse mockResponse = new GetAccountResponse();
+        when(coreService.getAccount()).thenReturn(mockResponse);
+    
+        ResponseEntity<GetAccountResponse> response = service.getAccount();
+    
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(mockResponse, response.getBody());
+    }
+
+    // Successfully retrieve billers with a valid ProcessorBillerType
+    @Test
+    public void test_getBillers_with_valid_ProcessorBillerType() {
+        // Arrange
+        BillProcessorCoreService mockCoreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl billProcessorService = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(billProcessorService, "billProcessorCoreService", mockCoreService);
+    
+        ProcessorBillerType validBillerType = ProcessorBillerType.SOME_VALID_TYPE;
+        GetBillersResponse expectedResponse = new GetBillersResponse();
+        when(mockCoreService.getBillers(validBillerType)).thenReturn(expectedResponse);
+    
+        // Act
+        ResponseEntity<GetBillersResponse> responseEntity = billProcessorService.getBillers(validBillerType);
+    
+        // Assert
+        assertNotNull(responseEntity);
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertEquals(expectedResponse, responseEntity.getBody());
+    }
+
+    // Handle null response from billProcessorCoreService.getTxn method
+    @Test
+    public void test_get_txn_returns_no_content_when_response_is_null() {
+        BillProcessorCoreService mockCoreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl billProcessorService = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(billProcessorService, "billProcessorCoreService", mockCoreService);
+    
+        String cashiOrderId = "testOrderId";
+        int authKeyVersion = 1;
+    
+        when(mockCoreService.getTxn(cashiOrderId, authKeyVersion)).thenReturn(null);
+    
+        ResponseEntity<PayBillResponse> response = billProcessorService.getTxn(cashiOrderId, authKeyVersion);
+    
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    // Handle invalid or null cashiOrderId input
+    @Test
+    public void test_getTxn_with_null_cashiOrderId_returns_no_content() {
+        BillProcessorCoreService mockCoreService = mock(BillProcessorCoreService.class);
+        when(mockCoreService.getTxn(null, 1)).thenReturn(null);
+    
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        service.billProcessorCoreService = mockCoreService;
+    
+        ResponseEntity<PayBillResponse> response = service.getTxn(null, 1);
+    
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    // Handle invalid or null ProcessorBillerType input
+    @Test
+    public void test_getBillers_with_null_ProcessorBillerType() {
+        BillProcessorCoreService mockCoreService = Mockito.mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", mockCoreService);
+    
+        Mockito.when(mockCoreService.getBillers(null)).thenThrow(new IllegalArgumentException("ProcessorBillerType cannot be null"));
+    
+        Assertions.assertThrows(IllegalArgumentException.class, () -> {
+            service.getBillers(null);
+        });
+    }
+
+    // Verify ResponseEntity status codes for different scenarios
+    @Test
+    public void test_get_txn_response_status_codes() {
+        BillProcessorCoreService mockCoreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", mockCoreService);
+
+        String cashiOrderId = "12345";
+        int authKeyVersion = 1;
+
+        // Test for null response
+        when(mockCoreService.getTxn(cashiOrderId, authKeyVersion)).thenReturn(null);
+        ResponseEntity<PayBillResponse> response = service.getTxn(cashiOrderId, authKeyVersion);
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+
+        // Test for non-null response
+        PayBillResponse payBillResponse = new PayBillResponse();
+        when(mockCoreService.getTxn(cashiOrderId, authKeyVersion)).thenReturn(payBillResponse);
+        response = service.getTxn(cashiOrderId, authKeyVersion);
+        assertEquals(HttpStatus.OK, response.getStatusCode());
+    }
+
+    // Ensure proper dependency injection of BillProcessorCoreService
+    @Test
+    public void test_dependency_injection_of_bill_processor_core_service() {
+        BillProcessorCoreService mockCoreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", mockCoreService);
+    
+        assertNotNull(service.getAccount());
+        assertNotNull(service.getBillers(ProcessorBillerType.SOME_TYPE));
+        assertNotNull(service.getTxn("orderId", 1));
+    
+        verify(mockCoreService).getAccount();
+        verify(mockCoreService).getBillers(ProcessorBillerType.SOME_TYPE);
+        verify(mockCoreService).getTxn("orderId", 1);
+    }
+
+    // Test with different authKeyVersion values
+    @Test
+    public void test_get_txn_with_various_auth_key_versions() {
+        BillProcessorCoreService mockCoreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", mockCoreService);
+
+        String cashiOrderId = "testOrderId";
+        PayBillResponse expectedResponse = new PayBillResponse();
+    
+        // Test with a valid authKeyVersion
+        int validAuthKeyVersion = 1;
+        when(mockCoreService.getTxn(cashiOrderId, validAuthKeyVersion)).thenReturn(expectedResponse);
+        ResponseEntity<PayBillResponse> response = service.getTxn(cashiOrderId, validAuthKeyVersion);
+        assertEquals(ResponseEntity.ok(expectedResponse), response);
+
+        // Test with an invalid authKeyVersion
+        int invalidAuthKeyVersion = -1;
+        when(mockCoreService.getTxn(cashiOrderId, invalidAuthKeyVersion)).thenReturn(null);
+        response = service.getTxn(cashiOrderId, invalidAuthKeyVersion);
+        assertEquals(ResponseEntity.noContent().build(), response);
+    }
+
+    // Check for potential null pointer exceptions
+    @Test
+    public void test_get_txn_handles_null_response() {
+        BillProcessorCoreService mockCoreService = Mockito.mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", mockCoreService);
+    
+        String cashiOrderId = "testOrderId";
+        int authKeyVersion = 1;
+    
+        Mockito.when(mockCoreService.getTxn(cashiOrderId, authKeyVersion)).thenReturn(null);
+    
+        ResponseEntity<PayBillResponse> response = service.getTxn(cashiOrderId, authKeyVersion);
+    
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+    }
+
+    // Validate the response structure for getAccount and getBillers methods
+    @Test
+    public void test_get_account_and_get_billers_response_structure() {
+        BillProcessorCoreService mockCoreService = mock(BillProcessorCoreService.class);
+        BillProcessorServiceImpl service = new BillProcessorServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorCoreService", mockCoreService);
+    
+        GetAccountResponse mockAccountResponse = new GetAccountResponse();
+        when(mockCoreService.getAccount()).thenReturn(mockAccountResponse);
+    
+        ResponseEntity<GetAccountResponse> accountResponseEntity = service.getAccount();
+        assertNotNull(accountResponseEntity);
+        assertEquals(HttpStatus.OK, accountResponseEntity.getStatusCode());
+        assertEquals(mockAccountResponse, accountResponseEntity.getBody());
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+        GetBillersResponse mockBillersResponse = new GetBillersResponse();
+        when(mockCoreService.getBillers(processorBillerType)).thenReturn(mockBillersResponse);
+    
+        ResponseEntity<GetBillersResponse> billersResponseEntity = service.getBillers(processorBillerType);
+        assertNotNull(billersResponseEntity);
+        assertEquals(HttpStatus.OK, billersResponseEntity.getStatusCode());
+        assertEquals(mockBillersResponse, billersResponseEntity.getBody());
+    }
+
+}
+..............................................
+..............................................
+@ExtendWith(MockitoExtension.class)
+class SchoolProcessorCoreServiceImplTest {
+
+    @InjectMocks
+    private SchoolProcessorCoreServiceImpl schoolProcessorCoreService;
+
+    @Mock
+    private SchoolProcessorFactory schoolProcessorFactory;
+
+    @Mock
+    private SchoolProcessor schoolProcessor;
+
+    private static final String UPI_ORDER_ID = "testUpiOrderId";
+    private static final int AUTH_KEY_VERSION = 1;
+
+    @Test
+    void testGetTxn_Success() throws SchoolProcessorException {
+        // Arrange
+        PaySchoolResponse mockResponse = new PaySchoolResponse();
+        List<PaySchoolResponse> mockResponseList = Collections.singletonList(mockResponse);
+
+        Mockito.when(schoolProcessorFactory.getSchoolProcessor()).thenReturn(schoolProcessor);
+        Mockito.when(schoolProcessor.getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION)).thenReturn(mockResponseList);
+
+        // Act
+        PaySchoolResponse result = schoolProcessorCoreService.getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION);
+
+        // Assert
+        assertNotNull(result);
+        assertEquals(mockResponse, result);
+
+        Mockito.verify(schoolProcessorFactory).getSchoolProcessor();
+        Mockito.verify(schoolProcessor).getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION);
+    }
+
+    @Test
+    void testGetTxn_EmptyResponse() throws SchoolProcessorException {
+        // Arrange
+        Mockito.when(schoolProcessorFactory.getSchoolProcessor()).thenReturn(schoolProcessor);
+        Mockito.when(schoolProcessor.getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION)).thenReturn(Collections.emptyList());
+
+        // Act
+        PaySchoolResponse result = schoolProcessorCoreService.getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION);
+
+        // Assert
+        assertNull(result);
+
+        Mockito.verify(schoolProcessorFactory).getSchoolProcessor();
+        Mockito.verify(schoolProcessor).getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION);
+    }
+
+    @Test
+    void testGetTxn_ThrowsSchoolProcessorException() throws SchoolProcessorException {
+        // Arrange
+        Mockito.when(schoolProcessorFactory.getSchoolProcessor()).thenReturn(schoolProcessor);
+        Mockito.when(schoolProcessor.getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION))
+                .thenThrow(new SchoolProcessorException("ERROR_CODE", "Test exception"));
+
+        // Act & Assert
+        ProcessingException thrown = assertThrows(ProcessingException.class,
+                () -> schoolProcessorCoreService.getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION));
+
+        assertEquals("ERROR_CODE", thrown.getErrorCode());
+        assertTrue(thrown.getMessage().contains("Processing error in GetTxns"));
+
+        Mockito.verify(schoolProcessorFactory).getSchoolProcessor();
+        Mockito.verify(schoolProcessor).getTxn(UPI_ORDER_ID, AUTH_KEY_VERSION);
+    }
+}
+................................................................
+................................................................
+import com.walmart.international.wallet.payment.core.service.BillProcessorCoreServiceImpl;
+
+// Generated by Qodo Gen
+
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+public class GetbillersTest {
+    // Returns a GetBillersResponse object when billers are available
+    @Test
+    public void test_get_billers_returns_response_when_available() {
+        // Arrange
+        BillProcessorFactory mockBillProcessorFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl billProcessorCoreService = new BillProcessorCoreServiceImpl();
+        ReflectionTestUtils.setField(billProcessorCoreService, "billProcessorFactory", mockBillProcessorFactory);
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+        GetBillersResponse expectedResponse = new GetBillersResponse();
+    
+        when(mockBillProcessorFactory.getBillProcessor().getBillers(processorBillerType))
+            .thenReturn(expectedResponse);
+    
+        // Act
+        GetBillersResponse actualResponse = billProcessorCoreService.getBillers(processorBillerType);
+    
+        // Assert
+        assertNotNull(actualResponse);
+        assertEquals(expectedResponse, actualResponse);
+    }
+
+    // Correctly formats the processing error message with processorBillerType
+    @Test
+    public void test_getBillers_processing_error_message_format() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+        BillProcessorException exception = new BillProcessorException("ERROR_CODE", "Error message");
+    
+        when(mockFactory.getBillProcessor().getBillers(processorBillerType)).thenThrow(exception);
+    
+        ProcessingException thrown = assertThrows(
+            ProcessingException.class,
+            () -> service.getBillers(processorBillerType)
+        );
+    
+        String expectedMessage = String.format("Processing error in getBillers for processorBillerType:[%s]", processorBillerType);
+        assertEquals(expectedMessage, thrown.getMessage());
+    }
+
+    // Successfully retrieves billers for a valid ProcessorBillerType
+    @Test
+    public void test_getBillers_with_valid_ProcessorBillerType() {
+        // Arrange
+        BillProcessorCoreServiceImpl billProcessorCoreService = new BillProcessorCoreServiceImpl();
+        ProcessorBillerType validProcessorBillerType = ProcessorBillerType.VALID_TYPE; // Assume VALID_TYPE is a valid enum constant
+        GetBillersResponse expectedResponse = new GetBillersResponse(); // Assume this is the expected response
+
+        BillProcessorFactory mockBillProcessorFactory = Mockito.mock(BillProcessorFactory.class);
+        BillProcessor mockBillProcessor = Mockito.mock(BillProcessor.class);
+        Mockito.when(mockBillProcessorFactory.getBillProcessor()).thenReturn(mockBillProcessor);
+        Mockito.when(mockBillProcessor.getBillers(validProcessorBillerType)).thenReturn(expectedResponse);
+
+        // Inject the mock factory into the service
+        ReflectionTestUtils.setField(billProcessorCoreService, "billProcessorFactory", mockBillProcessorFactory);
+
+        // Act
+        GetBillersResponse actualResponse = billProcessorCoreService.getBillers(validProcessorBillerType);
+
+        // Assert
+        assertEquals(expectedResponse, actualResponse);
+    }
+
+    // Handles null ProcessorBillerType gracefully
+    @Test
+    public void test_getBillers_with_null_ProcessorBillerType() {
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mock(BillProcessorFactory.class);
+        when(service.billProcessorFactory.getBillProcessor().getBillers(null))
+            .thenThrow(new BillProcessorException("Error Code", "Error Message"));
+    
+        Exception exception = assertThrows(ProcessingException.class, () -> {
+            service.getBillers(null);
+        });
+    
+        assertEquals("Error Code", ((ProcessingException) exception).getErrorCode());
+        assertTrue(exception.getMessage().contains("Processing error in getBillers for processorBillerType:[null]"));
+    }
+
+    // Handles unexpected exceptions thrown by getBillers method
+    @Test
+    public void test_getBillers_handles_unexpected_exceptions() {
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        BillProcessorFactory mockFactory = Mockito.mock(BillProcessorFactory.class);
+        BillProcessor mockProcessor = Mockito.mock(BillProcessor.class);
+        service.billProcessorFactory = mockFactory;
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+    
+        Mockito.when(mockFactory.getBillProcessor()).thenReturn(mockProcessor);
+        Mockito.when(mockProcessor.getBillers(processorBillerType))
+               .thenThrow(new BillProcessorException("ErrorCode", "Error message"));
+    
+        Assertions.assertThrows(ProcessingException.class, () -> {
+            service.getBillers(processorBillerType);
+        });
+    }
+
+    // Manages empty response from getBillers method
+    @Test
+    public void test_getBillers_handles_empty_response() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+        BillProcessor mockProcessor = mock(BillProcessor.class);
+        when(mockFactory.getBillProcessor()).thenReturn(mockProcessor);
+        when(mockProcessor.getBillers(processorBillerType)).thenReturn(null);
+    
+        GetBillersResponse response = service.getBillers(processorBillerType);
+    
+        assertNull(response, "Expected null response when getBillers returns null");
+    }
+
+    // Validates the correct instantiation of BillProcessorFactory
+    @Test
+    public void test_getBillers_instantiates_BillProcessorFactory() {
+        // Arrange
+        BillProcessorFactory mockBillProcessorFactory = mock(BillProcessorFactory.class);
+        BillProcessor mockBillProcessor = mock(BillProcessor.class);
+        when(mockBillProcessorFactory.getBillProcessor()).thenReturn(mockBillProcessor);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorFactory", mockBillProcessorFactory);
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE; // Replace with actual type
+
+        // Act
+        service.getBillers(processorBillerType);
+
+        // Assert
+        verify(mockBillProcessorFactory, times(1)).getBillProcessor();
+    }
+
+    // Ensures getBillers method is called with the correct ProcessorBillerType
+    @Test
+    public void test_getBillers_with_correct_ProcessorBillerType() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        ProcessorBillerType expectedType = ProcessorBillerType.SOME_TYPE;
+        GetBillersResponse expectedResponse = new GetBillersResponse();
+    
+        when(mockFactory.getBillProcessor().getBillers(expectedType)).thenReturn(expectedResponse);
+    
+        GetBillersResponse actualResponse = service.getBillers(expectedType);
+    
+        assertEquals(expectedResponse, actualResponse);
+        verify(mockFactory.getBillProcessor()).getBillers(expectedType);
+    }
+
+    // Verifies that ProcessingException is thrown with the correct error code
+    @Test
+    public void test_getBillers_throws_ProcessingException_with_correct_error_code() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+        BillProcessorException exception = new BillProcessorException("ERROR_CODE");
+    
+        when(mockFactory.getBillProcessor().getBillers(processorBillerType)).thenThrow(exception);
+    
+        ProcessingException thrown = assertThrows(
+            ProcessingException.class,
+            () -> service.getBillers(processorBillerType)
+        );
+    
+        assertEquals("ERROR_CODE", thrown.getErrorCode());
+        assertTrue(thrown.getMessage().contains("Processing error in getBillers for processorBillerType:[SOME_TYPE]"));
+    }
+
+    // Checks for proper logging of exceptions
+    @Test
+    public void test_getBillers_logs_processing_exception() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+        BillProcessorException exception = new BillProcessorException("ERROR_CODE", "Error message");
+    
+        when(mockFactory.getBillProcessor().getBillers(processorBillerType)).thenThrow(exception);
+    
+        ProcessingException thrown = assertThrows(
+            ProcessingException.class,
+            () -> service.getBillers(processorBillerType)
+        );
+    
+        assertEquals("ERROR_CODE", thrown.getErrorCode());
+        assertTrue(thrown.getMessage().contains("Processing error in getBillers for processorBillerType:[SOME_TYPE]"));
+    }
+
+    // Confirms that no side effects occur when an exception is thrown
+    @Test
+    public void test_getBillers_throws_processing_exception() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        ProcessorBillerType processorBillerType = ProcessorBillerType.SOME_TYPE;
+        BillProcessorException exception = new BillProcessorException("Error Code", "Error Message");
+    
+        when(mockFactory.getBillProcessor().getBillers(processorBillerType)).thenThrow(exception);
+    
+        ProcessingException thrownException = assertThrows(
+            ProcessingException.class,
+            () -> service.getBillers(processorBillerType)
+        );
+    
+        assertEquals("Error Code", thrownException.getErrorCode());
+        assertTrue(thrownException.getMessage().contains("Processing error in getBillers for processorBillerType:[SOME_TYPE]"));
+    }
+
+}
+................................................
+................................................
+import com.walmart.international.wallet.payment.core.service.BillProcessorCoreServiceImpl;
+
+// Generated by Qodo Gen
+
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+public class GetaccountTest {
+    // Successfully retrieves account information when no exceptions occur
+    @Test
+    public void test_successful_account_retrieval() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessor mockProcessor = mock(BillProcessor.class);
+        GetAccountResponse expectedResponse = new GetAccountResponse();
+    
+        when(mockFactory.getBillProcessor()).thenReturn(mockProcessor);
+        when(mockProcessor.getAccount()).thenReturn(expectedResponse);
+    
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorFactory", mockFactory);
+    
+        GetAccountResponse actualResponse = service.getAccount();
+    
+        assertEquals(expectedResponse, actualResponse);
+    }
+
+    // Returns a valid GetAccountResponse object when the account retrieval is successful
+    @Test
+    public void test_valid_get_account_response() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessor mockProcessor = mock(BillProcessor.class);
+        GetAccountResponse expectedResponse = new GetAccountResponse();
+    
+        when(mockFactory.getBillProcessor()).thenReturn(mockProcessor);
+        when(mockProcessor.getAccount()).thenReturn(expectedResponse);
+    
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorFactory", mockFactory);
+    
+        GetAccountResponse actualResponse = service.getAccount();
+    
+        assertNotNull(actualResponse);
+    }
+
+    // Handles BillProcessorValidationException by throwing BusinessValidationException
+    @Test
+    public void test_get_account_throws_business_validation_exception() {
+        BillProcessorFactory mockBillProcessorFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockBillProcessorFactory;
+    
+        BillProcessor billProcessor = mock(BillProcessor.class);
+        when(mockBillProcessorFactory.getBillProcessor()).thenReturn(billProcessor);
+        when(billProcessor.getAccount()).thenThrow(new BillProcessorValidationException("VALIDATION_ERROR", "Validation failed"));
+    
+        BusinessValidationException exception = assertThrows(BusinessValidationException.class, () -> {
+            service.getAccount();
+        });
+    
+        assertEquals("VALIDATION_ERROR", exception.getErrorCode());
+        assertEquals("Validation error in getAccount", exception.getMessage());
+    }
+
+    // Handles BillProcessorException by throwing ProcessingException
+    @Test
+    public void test_get_account_handles_bill_processor_exception() {
+        BillProcessorFactory mockBillProcessorFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockBillProcessorFactory;
+    
+        BillProcessorException exception = new BillProcessorException("ErrorCode", "Error message");
+        when(mockBillProcessorFactory.getBillProcessor().getAccount()).thenThrow(exception);
+    
+        ProcessingException thrown = assertThrows(
+            ProcessingException.class,
+            () -> service.getAccount(),
+            "Expected getAccount() to throw, but it didn't"
+        );
+    
+        assertEquals("ErrorCode", thrown.getErrorCode());
+        assertTrue(thrown.getMessage().contains("Processing error in getAccount"));
+    }
+
+    // Returns null if the account retrieval process returns null
+    @Test
+    public void test_get_account_returns_null_when_retrieval_is_null() {
+        BillProcessorFactory mockFactory = Mockito.mock(BillProcessorFactory.class);
+        BillProcessor mockProcessor = Mockito.mock(BillProcessor.class);
+        Mockito.when(mockFactory.getBillProcessor()).thenReturn(mockProcessor);
+        Mockito.when(mockProcessor.getAccount()).thenReturn(null);
+
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorFactory", mockFactory);
+
+        GetAccountResponse response = service.getAccount();
+
+        assertNull(response, "Expected null when account retrieval process returns null");
+    }
+
+    // Validates that the error message in BusinessValidationException is correctly formatted
+    @Test
+    public void test_business_validation_exception_message_format() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        when(mockFactory.getBillProcessor().getAccount()).thenThrow(new BillProcessorValidationException("VALIDATION_ERROR_CODE"));
+    
+        BusinessValidationException exception = assertThrows(BusinessValidationException.class, () -> {
+            service.getAccount();
+        });
+    
+        assertEquals("Validation error in getAccount", exception.getMessage());
+    }
+
+    // Validates that the error message in ProcessingException is correctly formatted
+    @Test
+    public void test_processing_exception_message_format() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = mockFactory;
+    
+        BillProcessorException exception = new BillProcessorException("ERROR_CODE");
+        when(mockFactory.getBillProcessor().getAccount()).thenThrow(exception);
+    
+        ProcessingException thrownException = assertThrows(ProcessingException.class, () -> {
+            service.getAccount();
+        });
+    
+        String expectedMessage = "Processing error in getAccount";
+        assertEquals(expectedMessage, thrownException.getMessage());
+    }
+
+    // Ensures that the method does not modify the state of the BillProcessorCoreServiceImpl class
+    @Test
+    public void test_get_account_does_not_modify_state() {
+        BillProcessorFactory mockFactory = Mockito.mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorFactory", mockFactory);
+    
+        GetAccountResponse mockResponse = new GetAccountResponse();
+        Mockito.when(mockFactory.getBillProcessor().getAccount()).thenReturn(mockResponse);
+    
+        GetAccountResponse response = service.getAccount();
+    
+        Assertions.assertEquals(mockResponse, response, "The response should match the mock response");
+        Mockito.verify(mockFactory.getBillProcessor(), Mockito.times(1)).getAccount();
+    }
+
+    // Confirms that the method is thread-safe and can handle concurrent access
+    @Test
+    public void test_get_account_thread_safety() {
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        service.billProcessorFactory = new BillProcessorFactory(); // Assuming a default constructor for simplicity
+
+        Runnable task = () -> {
+            try {
+                GetAccountResponse response = service.getAccount();
+                assertNotNull(response);
+            } catch (BusinessValidationException | ProcessingException e) {
+                fail("Exception should not be thrown in concurrent access: " + e.getMessage());
+            }
+        };
+
+        Thread thread1 = new Thread(task);
+        Thread thread2 = new Thread(task);
+
+        thread1.start();
+        thread2.start();
+
+        try {
+            thread1.join();
+            thread2.join();
+        } catch (InterruptedException e) {
+            fail("Thread was interrupted: " + e.getMessage());
+        }
+    }
+
+    // Verifies that the method logs appropriate error messages when exceptions are thrown
+    @Test
+    public void test_get_account_logs_error_messages_on_exceptions() {
+        BillProcessorFactory mockFactory = mock(BillProcessorFactory.class);
+        BillProcessorCoreServiceImpl service = new BillProcessorCoreServiceImpl();
+        ReflectionTestUtils.setField(service, "billProcessorFactory", mockFactory);
+    
+        BillProcessor billProcessor = mock(BillProcessor.class);
+        when(mockFactory.getBillProcessor()).thenReturn(billProcessor);
+    
+        // Test for BillProcessorValidationException
+        when(billProcessor.getAccount()).thenThrow(new BillProcessorValidationException("VALIDATION_ERROR", "Validation error"));
+        Exception exception = assertThrows(BusinessValidationException.class, () -> {
+            service.getAccount();
+        });
+        assertEquals("Validation error in getAccount", exception.getMessage());
+    
+        // Test for BillProcessorException
+        when(billProcessor.getAccount()).thenThrow(new BillProcessorException("PROCESSING_ERROR", "Processing error"));
+        exception = assertThrows(ProcessingException.class, () -> {
+            service.getAccount();
+        });
+        assertEquals("Processing error in getAccount", exception.getMessage());
+    }
+
+}
+.........................................
+.........................................
+import com.walmart.international.wallet.payment.app.service.impl.BillServiceImpl;
+
+// Generated by Qodo Gen
+
+import org.junit.Test;
+import static org.junit.Assert.*;
+
+public class CodeUnderTestTest {
+    // Successfully fetches bills for a valid customer account ID
+    @Test
+    public void test_fetch_bills_valid_customer_account_id() throws BusinessValidationException {
+        GetBillsRequest request = new GetBillsRequest();
+        request.setCustomerAccountId(UUID.randomUUID());
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+    
+        BillServiceImpl billService = new BillServiceImpl();
+        GetBillsResponse response = billService.getBills(request, headers);
+    
+        assertNotNull(response);
+        assertFalse(response.getDueBills().isEmpty());
+    }
+
+    // Correctly maps bill types to their respective DTOs
+    @Test
+    public void test_map_bill_types_to_dtos() {
+        List<CustomerBillAccount> accounts = new ArrayList<>();
+        CustomerBillAccount account = new CustomerBillAccount();
+        account.setBiller(new Biller());
+        accounts.add(account);
+    
+        BillServiceImpl billService = new BillServiceImpl();
+        List<GetBillsCustomerBillAccountDTO> dtos = billService.getCustomerBillAccountDTOList(BillType.DUE, accounts, new ArrayList<>(), new HashMap<>(), new HashMap<>());
+    
+        assertNotNull(dtos);
+        assertEquals(1, dtos.size());
+    }
+
+    // Handles valid requests for updating customer bill account information
+    @Test
+    public void test_update_customer_bill_account_info() throws ApplicationException {
+        UpdateCustomerBillAccountRequest request = new UpdateCustomerBillAccountRequest();
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+    
+        WalletServiceRouter mockRouter = mock(WalletServiceRouter.class);
+        when(mockRouter.updateCustomerBillAccount(any(), any())).thenReturn(new UpdateCustomerBillAccountResponse());
+    
+        BillServiceImpl billService = new BillServiceImpl();
+        billService.walletServiceRouter = mockRouter;
+    
+        UpdateCustomerBillAccountResponse response = billService.updateCustomerBillAccount(request, headers);
+    
+        assertNotNull(response);
+    }
+
+    // Deletes a customer bill account when valid request data is provided
+    @Test
+    public void test_delete_customer_bill_account_valid_request() throws BusinessValidationException {
+        DeleteCustomerBillAccountRequest request = new DeleteCustomerBillAccountRequest();
+        request.setCustomerBillAccountId(UUID.randomUUID());
+    
+        BillCoreService mockCoreService = mock(BillCoreService.class);
+        when(mockCoreService.deleteCustomerBillAccount(any(), any())).thenReturn(new CustomerBillAccount());
+    
+        BillServiceImpl billService = new BillServiceImpl();
+        billService.billCoreService = mockCoreService;
+    
+        DeleteCustomerBillAccountResponse response = billService.deleteCustomerBillAccount(request, new LinkedMultiValueMap<>());
+    
+        assertNotNull(response);
+        assertNotNull(response.getCustomerBillAccountDeletedAt());
+    }
+
+    // Creates a bill successfully using the WalletServiceRouter
+    @Test
+    public void test_create_bill_successfully() throws ApplicationException {
+        CreateBillRequest request = new CreateBillRequest();
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+    
+        WalletServiceRouter mockRouter = mock(WalletServiceRouter.class);
+        when(mockRouter.createBill(any(), any())).thenReturn(new CreateBillResponse());
+    
+        BillServiceImpl billService = new BillServiceImpl();
+        billService.walletServiceRouter = mockRouter;
+    
+        CreateBillResponse response = billService.createBill(request, headers);
+    
+        assertNotNull(response);
+    }
+
+    // Handles null or empty GetBillsRequest gracefully
+    @Test
+    public void test_handle_null_or_empty_get_bills_request() throws BusinessValidationException {
+        BillServiceImpl billService = new BillServiceImpl();
+    
+        GetBillsResponse response = billService.getBills(null, new LinkedMultiValueMap<>());
+    
+        assertNotNull(response);
+        assertTrue(response.getDueBills().isEmpty());
+    }
+
+    // Manages invalid bill type values in GetBillsRequest
+    @Test
+    public void test_manage_invalid_bill_type_values() throws BusinessValidationException {
+        GetBillsRequest request = new GetBillsRequest();
+        request.setBillType(Arrays.asList(BillType.UNKNOWN));
+    
+        BillServiceImpl billService = new BillServiceImpl();
+    
+        GetBillsResponse response = billService.getBills(request, new LinkedMultiValueMap<>());
+    
+        assertNotNull(response);
+        assertTrue(response.getDueBills().isEmpty());
+    }
+
+    // Processes requests with missing customer account IDs
+    @Test
+    public void test_process_requests_missing_customer_account_ids() throws BusinessValidationException {
+        GetBillsRequest request = new GetBillsRequest();
+    
+        BillServiceImpl billService = new BillServiceImpl();
+    
+        GetBillsResponse response = billService.getBills(request, new LinkedMultiValueMap<>());
+    
+        assertNotNull(response);
+        assertTrue(response.getDueBills().isEmpty());
+    }
+
+    // Handles parsing errors in due date format gracefully
+    @Test
+    public void test_handle_parsing_errors_due_date_format() {
+        UpdateCustomerBillAccountDueInfoRequest request = new UpdateCustomerBillAccountDueInfoRequest();
+        request.setDueDate("invalid-date-format");
+    
+        BillCoreService mockCoreService = mock(BillCoreService.class);
+    
+        BillServiceImpl billService = new BillServiceImpl();
+        billService.billCoreService = mockCoreService;
+    
+        assertThrows(ProcessingException.class, () -> {
+            billService.updateCustomerBillAccountDueInfo(request, new LinkedMultiValueMap<>());
+        });
+    }
+
+    // Manages BusinessValidationException by returning appropriate responses
+    @Test
+    public void test_update_customer_bill_account_due_info_handles_business_validation_exception() {
+        // Arrange
+        BillServiceImpl billService = new BillServiceImpl();
+        UpdateCustomerBillAccountDueInfoRequest request = new UpdateCustomerBillAccountDueInfoRequest();
+        request.setProcessorBillAccountId("testProcessorBillAccountId");
+        request.setProcessorBillerId("testProcessorBillerId");
+        request.setAccountNumber("testAccountNumber");
+        request.setDueDate("2023-10-10T00:00:00Z");
+        request.setDueAmount(100.0);
+        request.setDueAmountCurrencyUnit("USD");
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+    
+        BillCoreService billCoreServiceMock = mock(BillCoreService.class);
+        billService.billCoreService = billCoreServiceMock;
+    
+        BusinessValidationException bve = new BusinessValidationException(
+            com.walmart.international.wallet.payment.core.constants.ErrorConstants.UpdateCustomerBillAccountDueInfo.CUSTOMER_BILL_ACCOUNT_NOT_FOUND,
+            "Customer bill account not found"
+        );
+    
+        doThrow(bve).when(billCoreServiceMock).updateCustomerBillAccountDueInfoAndRaiseReminders(any());
+    
+        // Act
+        UpdateCustomerBillAccountDueInfoResponse response = billService.updateCustomerBillAccountDueInfo(request, headers);
+    
+        // Assert
+        assertEquals("FAILURE", response.getStatus());
+        assertEquals(WPSConstants.Bills.RECORD_NOT_FOUND_FOR_ARCUS_WEBHOOK_COMBINATION, response.getMessage());
+    }
+
+    // Logs information about fetching bills and building DTOs
+    @Test
+    public void test_getBills_logs_information() {
+        // Arrange
+        BillServiceImpl billService = new BillServiceImpl();
+        GetBillsRequest getBillsRequest = new GetBillsRequest();
+        getBillsRequest.setCustomerAccountId(UUID.randomUUID());
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+    
+        // Mock dependencies
+        BillReminderConfiguration mockBillReminderConfiguration = mock(BillReminderConfiguration.class);
+        when(mockBillReminderConfiguration.getDaysToConsiderBillsAsDueBills()).thenReturn(30);
+        when(mockBillReminderConfiguration.getMaxDaysForNudge()).thenReturn(10);
+        when(mockBillReminderConfiguration.getMinDaysForNudge()).thenReturn(5);
+    
+        BillCoreService mockBillCoreService = mock(BillCoreService.class);
+        CustomerBillAccountsByType mockCustomerBillAccountsByType = mock(CustomerBillAccountsByType.class);
+        when(mockBillCoreService.getCustomerBillAccountsByType(any(), any(), anyInt(), anyInt(), anyInt(), any())).thenReturn(mockCustomerBillAccountsByType);
+    
+        BillerCoreService mockBillerCoreService = mock(BillerCoreService.class);
+        when(mockBillerCoreService.getBillerCategoriesList(anyInt())).thenReturn(new ArrayList<>());
+    
+        // Inject mocks
+        billService.billReminderConfiguration = mockBillReminderConfiguration;
+        billService.billCoreService = mockBillCoreService;
+        billService.billerCoreService = mockBillerCoreService;
+    
+        // Act
+        GetBillsResponse response = billService.getBills(getBillsRequest, headers);
+    
+        // Assert
+        assertNotNull(response);
+        verify(mockBillCoreService).getCustomerBillAccountsByType(any(), any(), anyInt(), anyInt(), anyInt(), any());
+    }
+
+    // Uses caching to optimize performance (not yet implemented)
+    @Test
+    public void test_get_customer_bill_account_dto_caching() {
+        BillServiceImpl billService = new BillServiceImpl();
+        List<BillerCategory> billerCategoryList = new ArrayList<>();
+        HashMap<UUID, UUID> billerIdToBillerCategoryIdMap = new HashMap<>();
+        HashMap<UUID, String> billerIdToBillerCategoryNameMap = new HashMap<>();
+        CustomerBillAccount customerBillAccount = new CustomerBillAccount();
+        customerBillAccount.setBiller(new Biller());
+        customerBillAccount.getBiller().setBillerId(UUID.randomUUID());
+    
+        // First call to populate cache
+        GetBillsCustomerBillAccountDTO dto1 = billService.getCustomerBillAccountDTO(
+            BillType.DUE, customerBillAccount, billerCategoryList, 
+            billerIdToBillerCategoryIdMap, billerIdToBillerCategoryNameMap
+        );
+    
+        // Second call to test caching
+        GetBillsCustomerBillAccountDTO dto2 = billService.getCustomerBillAccountDTO(
+            BillType.DUE, customerBillAccount, billerCategoryList, 
+            billerIdToBillerCategoryIdMap, billerIdToBillerCategoryNameMap
+        );
+    
+        assertEquals(dto1, dto2, "The DTOs should be equal if caching is working correctly.");
+    }
+
+    // Maps biller categories to billers efficiently
+    @Test
+    public void test_map_biller_categories_to_billers() {
+        // Arrange
+        BillServiceImpl billService = new BillServiceImpl();
+        List<BillerCategory> billerCategories = new ArrayList<>();
+        BillerCategory category1 = new BillerCategory();
+        category1.setId(UUID.randomUUID());
+        category1.setCategoryName("Utilities");
+        Biller biller1 = new Biller();
+        biller1.setBillerId(UUID.randomUUID());
+        category1.setBillers(List.of(biller1));
+        billerCategories.add(category1);
+
+        HashMap<UUID, UUID> billerIdToBillerCategoryIdMap = new HashMap<>();
+        HashMap<UUID, String> billerIdToBillerCategoryNameMap = new HashMap<>();
+
+        // Act
+        billService.getBillerCategoryIdAndNameForBiller(billerCategories, billerIdToBillerCategoryIdMap, billerIdToBillerCategoryNameMap, biller1.getBillerId());
+
+        // Assert
+        assertEquals(category1.getId(), billerIdToBillerCategoryIdMap.get(biller1.getBillerId()));
+        assertEquals("Utilities", billerIdToBillerCategoryNameMap.get(biller1.getBillerId()));
+    }
+
+    // Utilizes configuration values for bill reminders and nudges
+    @Test
+    public void test_get_bills_uses_configuration_values() {
+        // Arrange
+        BillReminderConfiguration mockConfig = mock(BillReminderConfiguration.class);
+        when(mockConfig.getDaysToConsiderBillsAsDueBills()).thenReturn(30);
+        when(mockConfig.getMaxDaysForNudge()).thenReturn(10);
+        when(mockConfig.getMinDaysForNudge()).thenReturn(5);
+
+        BillCoreService mockBillCoreService = mock(BillCoreService.class);
+        BillerCoreService mockBillerCoreService = mock(BillerCoreService.class);
+        WalletServiceRouter mockWalletServiceRouter = mock(WalletServiceRouter.class);
+
+        BillServiceImpl billService = new BillServiceImpl();
+        billService.billReminderConfiguration = mockConfig;
+        billService.billCoreService = mockBillCoreService;
+        billService.billerCoreService = mockBillerCoreService;
+        billService.walletServiceRouter = mockWalletServiceRouter;
+
+        GetBillsRequest request = new GetBillsRequest();
+        request.setCustomerAccountId(UUID.randomUUID());
+        request.setBillType(List.of(BillType.DUE));
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+
+        CustomerBillAccountsByType mockAccountsByType = new CustomerBillAccountsByType();
+        when(mockBillCoreService.getCustomerBillAccountsByType(any(), any(), anyInt(), anyInt(), anyInt(), any()))
+            .thenReturn(mockAccountsByType);
+
+        // Act
+        GetBillsResponse response = billService.getBills(request, headers);
+
+        // Assert
+        assertNotNull(response);
+        verify(mockConfig).getDaysToConsiderBillsAsDueBills();
+        verify(mockConfig).getMaxDaysForNudge();
+        verify(mockConfig).getMinDaysForNudge();
+    }
+
+    // Handles overdue and nudge bill scenarios correctly
+    @Test
+    public void test_get_bills_handles_overdue_and_nudge_scenarios() {
+        // Arrange
+        BillServiceImpl billService = new BillServiceImpl();
+        GetBillsRequest getBillsRequest = new GetBillsRequest();
+        getBillsRequest.setCustomerAccountId(UUID.randomUUID());
+        getBillsRequest.setBillType(List.of(BillType.OVERDUE, BillType.NUDGE));
+        MultiValueMap<String, String> headers = new LinkedMultiValueMap<>();
+    
+        BillReminderConfiguration billReminderConfiguration = mock(BillReminderConfiguration.class);
+        when(billReminderConfiguration.getDaysToConsiderBillsAsDueBills()).thenReturn(30);
+        when(billReminderConfiguration.getMaxDaysForNudge()).thenReturn(10);
+        when(billReminderConfiguration.getMinDaysForNudge()).thenReturn(5);
+        billService.billReminderConfiguration = billReminderConfiguration;
+    
+        BillCoreService billCoreService = mock(BillCoreService.class);
+        CustomerBillAccountsByType customerBillAccountsByType = new CustomerBillAccountsByType();
+        customerBillAccountsByType.setOverdueBills(new ArrayList<>());
+        customerBillAccountsByType.setDueBills(new ArrayList<>());
+        customerBillAccountsByType.setPaidBills(new ArrayList<>());
+        when(billCoreService.getCustomerBillAccountsByType(any(), any(), anyInt(), anyInt(), anyInt(), any())).thenReturn(customerBillAccountsByType);
+        billService.billCoreService = billCoreService;
+    
+        BillerCoreService billerCoreService = mock(BillerCoreService.class);
+        when(billerCoreService.getBillerCategoriesList(anyInt())).thenReturn(new ArrayList<>());
+        billService.billerCoreService = billerCoreService;
+    
+        // Act
+        GetBillsResponse response = billService.getBills(getBillsRequest, headers);
+    
+        // Assert
+        assertNotNull(response);
+        assertTrue(response.getOverdueBills().isEmpty());
+        assertTrue(response.getDueBills().isEmpty());
+    }
+
+}
+...........................
+..............................
